@@ -1,0 +1,246 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { DEFAULT_RULES, ENTRY_LABEL, describeRules, sanitizeRules, toMql5, toPine, type EntryKind, type Rules } from '@/lib/trading/botspec';
+
+type BT = { trades: number; wins: number; losses: number; winRate: number; netPips: number; profitFactor: number | null; maxDrawdownPct: number; startEquity: number; endEquity: number; returnPct: number; from: string; to: string; candles: number; equity: number[]; lastTrades: { time: string; side: string; result: string; pips: number }[]; assumptions: string[] };
+
+const EXAMPLE = 'Buy EURUSD when the 20 EMA crosses above the 50 EMA on the 1-hour chart, and sell when it crosses below. Stop loss 20 pips, take profit 40 pips. Risk 1% per trade.';
+
+function download(name: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function Spark({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const w = 600;
+  const h = 140;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / (max - min || 1)) * (h - 10) - 5}`).join(' ');
+  const up = data[data.length - 1] >= data[0];
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} role="img" aria-label={`Account balance went from $${data[0].toLocaleString()} to $${data[data.length - 1].toLocaleString()}`}>
+      <polyline points={pts} fill="none" stroke={up ? '#0B8A55' : '#C2410C'} strokeWidth="3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function BotBuilder({ signedIn }: { signedIn: boolean }) {
+  const [text, setText] = useState(EXAMPLE);
+  const [rules, setRules] = useState<Rules | null>(null);
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState('');
+  const [bt, setBt] = useState<{ symbol: string; result: BT } | null>(null);
+  const [btErr, setBtErr] = useState('');
+  const [show, setShow] = useState<'' | 'mql5' | 'pine'>('');
+  const [botId, setBotId] = useState<number | null>(null);
+  const [saved, setSaved] = useState('');
+  const [bots, setBots] = useState<{ id: number; name: string; rules: Rules; description: string }[]>([]);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    fetch('/api/bots').then((r) => r.json()).then((d) => d.ok && setBots(d.bots)).catch(() => {});
+  }, [signedIn]);
+
+  async function check() {
+    setBusy('parse');
+    setMsg('');
+    setBt(null);
+    try {
+      const r = await fetch('/api/bots/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'Could not read the strategy.');
+      if (d.unsupported) { setRules(null); setMsg(d.unsupported); return; }
+      setRules(d.rules);
+      setQuestions(d.questions || []);
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  function upd(p: Partial<Rules>) { setRules(sanitizeRules({ ...(rules || DEFAULT_RULES), ...p })); setBt(null); }
+  function updEntry(p: Partial<Rules['entry']>) { const r = rules || DEFAULT_RULES; upd({ entry: { ...r.entry, ...p } }); }
+
+  async function runBacktest() {
+    if (!rules) return;
+    setBusy('bt');
+    setBtErr('');
+    try {
+      const r = await fetch('/api/bots/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'The backtest could not run.');
+      setBt({ symbol: d.symbol, result: d.result });
+    } catch (e) {
+      setBtErr((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function save() {
+    if (!rules) return;
+    if (!signedIn) { window.location.href = '/get-started'; return; }
+    setSaved('');
+    const r = await fetch('/api/bots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: botId, rules, description: text }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) return setSaved(d.error || 'Could not save.');
+    setBotId(d.id);
+    setSaved('Saved to your account. You can also scan it in the Market Scanner under "My strategy".');
+    fetch('/api/bots').then((x) => x.json()).then((x) => x.ok && setBots(x.bots)).catch(() => {});
+  }
+
+  const fileBase = (rules?.name || 'markiq-bot').replace(/[^\w-]+/g, '_');
+  const code = rules ? (show === 'mql5' ? toMql5(rules) : show === 'pine' ? toPine(rules) : '') : '';
+  const e = rules?.entry;
+
+  return (
+    <div className="stack on-navy" style={{ background: '#0B1A36', color: '#FFFFFF', borderRadius: 34, padding: 'clamp(24px, 4vw, 56px)', gap: 34 }}>
+      <div className="stack" style={{ gap: 14, maxWidth: 860 }}>
+        <div className="row" style={{ alignItems: 'center', gap: 12 }}><h2 className="h2">Bot Builder</h2><span className="chip chip-amber">Beta</span></div>
+        <p style={{ margin: 0, fontSize: 20, color: '#B9C9E6' }}>Describe your strategy in plain words. We turn it into a working bot, test it on past data, then you run it on a demo account and, when you are ready, on your own MT5.</p>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
+        {[['1', 'Describe it', 'Write your strategy like you would explain it to a friend.'], ['2', 'Check the rules', 'See the exact rules we understood and fix anything unclear.'], ['3', 'Get your bot', 'Download it for MT5 or copy it into TradingView, with safety limits built in.'], ['4', 'Test it', 'Backtest on past data, then run it on a demo account for a few weeks.'], ['5', 'Go live on MT5', 'When results hold up, run it on your own MT5, starting small.']].map(([n, t, x]) => (
+          <div key={n} className="glass stack" style={{ gap: 6 }}>
+            <span className="display" style={{ fontWeight: 700, fontSize: 36, color: '#FFB547' }}>{n}</span>
+            <span className="display" style={{ fontWeight: 700, fontSize: 20 }}>{t}</span>
+            <span style={{ fontSize: 15, color: '#B9C9E6' }}>{x}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="row" style={{ background: '#FFFFFF', color: '#0B1A36', borderRadius: 30, padding: 'clamp(22px, 3vw, 36px)', gap: 28 }}>
+        <div className="stack" style={{ flex: '1 1 420px', minWidth: 0, gap: 12 }}>
+          <label htmlFor="bb-text" style={{ fontWeight: 700, fontSize: 18 }}>1 · Describe your strategy</label>
+          <textarea id="bb-text" rows={6} value={text} maxLength={3000} onChange={(ev) => setText(ev.target.value)} style={{ padding: 16, borderRadius: 16, border: '1px solid #D8D0C1', background: '#F6F1E9', color: '#0B1A36', fontSize: 17, resize: 'vertical' }} />
+          <span style={{ fontSize: 14, color: '#5A6780' }}>Works today with: EMA or SMA crossovers, RSI levels, MACD crossovers and breakouts of a recent high or low, on the 1-hour, 4-hour or daily chart.</span>
+          <button type="button" onClick={check} disabled={busy === 'parse'} className="btn" style={{ alignSelf: 'flex-start', background: '#0B1A36', color: '#FFFFFF' }}>
+            {busy === 'parse' ? <span className="spinner" aria-label="Reading" /> : 'Check my rules'} <span aria-hidden="true" style={{ color: '#FFB547' }}>»</span>
+          </button>
+          {signedIn && bots.length > 0 && (
+            <div className="stack" style={{ gap: 6, marginTop: 6 }}>
+              <span style={{ fontWeight: 600 }}>Your saved bots</span>
+              <div className="row" style={{ gap: 8 }}>
+                {bots.map((b) => (
+                  <button key={b.id} type="button" className="toggle" style={{ background: '#F6F1E9', color: '#0B1A36', borderColor: '#D8D0C1' }} onClick={() => { setRules(sanitizeRules(b.rules)); setBotId(b.id); setText(b.description || text); setQuestions([]); setBt(null); setMsg(''); }}>{b.name}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="stack" style={{ flex: '1 1 380px', minWidth: 0, gap: 12 }}>
+          <span style={{ fontWeight: 700, fontSize: 18 }}>2 · Rules we understood</span>
+          {!rules ? (
+            <div style={{ background: '#F6F1E9', borderRadius: 18, padding: 22, color: '#4A5873' }}>{msg || 'Press "Check my rules" to see how we read your strategy.'}</div>
+          ) : (
+            <>
+              <div className="stack" style={{ background: '#F6F1E9', borderRadius: 18, padding: 18, gap: 10 }}>
+                {describeRules(rules).map((r) => (
+                  <div key={r.k} className="row" style={{ justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #E2DACB', paddingBottom: 8 }}>
+                    <span style={{ color: '#4A5873' }}>{r.k}</span><span style={{ fontWeight: 600, textAlign: 'right', maxWidth: '65%' }}>{r.v}</span>
+                  </div>
+                ))}
+                {questions.map((q) => <span key={q} style={{ fontSize: 15, color: '#6B3E00', background: '#FFE2B0', borderRadius: 12, padding: '10px 12px' }}>{q} You can change it below.</span>)}
+              </div>
+              <details style={{ background: '#F6F1E9', borderRadius: 18, padding: '14px 18px' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Change the rules</summary>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 14 }}>
+                  <label className="field">Bot name<input className="input" value={rules.name} onChange={(ev) => upd({ name: ev.target.value })} /></label>
+                  <label className="field">Market<input className="input" value={rules.symbol} onChange={(ev) => upd({ symbol: ev.target.value })} /></label>
+                  <label className="field">Timeframe<select className="input select" value={rules.timeframe} onChange={(ev) => upd({ timeframe: ev.target.value as Rules['timeframe'] })}><option value="H1">1-hour</option><option value="H4">4-hour</option><option value="D1">Daily</option></select></label>
+                  <label className="field">Entry<select className="input select" value={rules.entry.kind} onChange={(ev) => upd({ entry: { kind: ev.target.value as EntryKind } })}>{(Object.keys(ENTRY_LABEL) as EntryKind[]).map((k) => <option key={k} value={k}>{ENTRY_LABEL[k]}</option>)}</select></label>
+                  {(e?.kind === 'ema_cross' || e?.kind === 'sma_cross') && <><label className="field">Fast<input className="input" type="number" value={e.fast} onChange={(ev) => updEntry({ fast: +ev.target.value })} /></label><label className="field">Slow<input className="input" type="number" value={e.slow} onChange={(ev) => updEntry({ slow: +ev.target.value })} /></label></>}
+                  {e?.kind === 'rsi' && <><label className="field">RSI length<input className="input" type="number" value={e.period} onChange={(ev) => updEntry({ period: +ev.target.value })} /></label><label className="field">Buy below<input className="input" type="number" value={e.lower} onChange={(ev) => updEntry({ lower: +ev.target.value })} /></label><label className="field">Sell above<input className="input" type="number" value={e.upper} onChange={(ev) => updEntry({ upper: +ev.target.value })} /></label></>}
+                  {e?.kind === 'breakout' && <label className="field">Candles<input className="input" type="number" value={e.lookback} onChange={(ev) => updEntry({ lookback: +ev.target.value })} /></label>}
+                  <label className="field">Trades<select className="input select" value={rules.direction} onChange={(ev) => upd({ direction: ev.target.value as Rules['direction'] })}><option value="both">Buy and sell</option><option value="long">Buy only</option><option value="short">Sell only</option></select></label>
+                  <label className="field">Stop loss (pips)<input className="input" type="number" value={rules.stopLossPips} onChange={(ev) => upd({ stopLossPips: +ev.target.value })} /></label>
+                  <label className="field">Take profit (pips)<input className="input" type="number" value={rules.takeProfitPips} onChange={(ev) => upd({ takeProfitPips: +ev.target.value })} /></label>
+                  <label className="field">Risk %<input className="input" type="number" step="0.1" value={rules.riskPercent} onChange={(ev) => upd({ riskPercent: +ev.target.value })} /></label>
+                  <label className="field">Max trades a day<input className="input" type="number" value={rules.maxTradesPerDay} onChange={(ev) => upd({ maxTradesPerDay: +ev.target.value })} /></label>
+                  <label className="field">Daily loss limit %<input className="input" type="number" step="0.5" value={rules.dailyLossPercent} onChange={(ev) => upd({ dailyLossPercent: +ev.target.value })} /></label>
+                </div>
+              </details>
+              <span style={{ fontWeight: 700, fontSize: 18, marginTop: 6 }}>3 · Get your bot</span>
+              <div className="row" style={{ gap: 10 }}>
+                <button type="button" className="btn btn-sm" style={{ background: '#0B1A36', color: '#FFFFFF' }} onClick={() => download(`${fileBase}.mq5`, toMql5(rules))}>Download MT5 bot (.mq5)</button>
+                <button type="button" className="btn btn-sm btn-outline" style={{ color: '#0B1A36', borderColor: '#0B1A36' }} onClick={() => download(`${fileBase}.pine`, toPine(rules))}>Download TradingView script</button>
+              </div>
+              <div className="row" style={{ gap: 14 }}>
+                <button type="button" className="linkbtn" onClick={() => setShow(show === 'mql5' ? '' : 'mql5')}>{show === 'mql5' ? 'Hide' : 'Show'} MT5 code</button>
+                <button type="button" className="linkbtn" onClick={() => setShow(show === 'pine' ? '' : 'pine')}>{show === 'pine' ? 'Hide' : 'Show'} TradingView code</button>
+                <button type="button" className="linkbtn" onClick={save}>{signedIn ? (botId ? 'Save changes' : 'Save to my account') : 'Log in to save'}</button>
+              </div>
+              {saved && <span role="status" style={{ fontSize: 15, color: '#0B4A2E' }}>{saved}</span>}
+            </>
+          )}
+        </div>
+      </div>
+
+      {code && (
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 700 }}>{show === 'mql5' ? 'MT5 (MQL5) code' : 'TradingView (Pine Script v6) code'}</span>
+            <button type="button" className="btn btn-sm btn-ghost-light" onClick={() => navigator.clipboard?.writeText(code)}>Copy code</button>
+          </div>
+          <pre className="code">{code}</pre>
+          <span style={{ color: '#B9C9E6', fontSize: 15 }}>{show === 'mql5' ? 'In MT5: File → Open Data Folder → MQL5 → Experts. Put the file there, open it in MetaEditor and press Compile. Then drag the bot onto a DEMO chart first.' : 'In TradingView: open the Pine Editor, paste the code, press "Add to chart", then open the Strategy Tester tab.'}</span>
+        </div>
+      )}
+
+      {rules && (
+        <div className="stack" style={{ gap: 16 }}>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <span className="display" style={{ fontWeight: 700, fontSize: 26 }}>4 · Test it on past data</span>
+            <button type="button" className="btn btn-amber" onClick={runBacktest} disabled={busy === 'bt'}>{busy === 'bt' ? <span className="spinner" aria-label="Testing" /> : 'Run backtest'} <span className="arr" aria-hidden="true">»</span></button>
+          </div>
+          {btErr && <div role="alert" className="note note-bad">{btErr}</div>}
+          {bt && (
+            <div className="stack" style={{ background: '#FFFFFF', color: '#0B1A36', borderRadius: 26, padding: 26, gap: 16 }}>
+              <span style={{ fontWeight: 700, fontSize: 18 }}>{bt.symbol} · {new Date(bt.result.from).toLocaleDateString('en-GB')} to {new Date(bt.result.to).toLocaleDateString('en-GB')} · {bt.result.candles.toLocaleString()} candles</span>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                {[
+                  ['Trades', String(bt.result.trades)],
+                  ['Win rate', `${bt.result.winRate}%`],
+                  ['Net pips', String(bt.result.netPips)],
+                  ['Profit factor', bt.result.profitFactor == null ? '—' : String(bt.result.profitFactor)],
+                  ['Max drawdown', `${bt.result.maxDrawdownPct}%`],
+                  ['Return', `${bt.result.returnPct}%`],
+                ].map(([k, v]) => <div key={k} style={{ background: '#F6F1E9', borderRadius: 14, padding: '12px 14px' }}><div style={{ fontSize: 13, color: '#4A5873' }}>{k}</div><div className="mono" style={{ fontSize: 22 }}>{v}</div></div>)}
+              </div>
+              <Spark data={bt.result.equity} />
+              <span style={{ fontSize: 15 }}>Balance: ${bt.result.startEquity.toLocaleString()} → ${bt.result.endEquity.toLocaleString()}</span>
+              {bt.result.trades < 30 && <div className="note note-warn">Only {bt.result.trades} trades. That is too few to trust. Test a longer period or another timeframe before relying on it.</div>}
+              <details><summary style={{ cursor: 'pointer', fontWeight: 600 }}>How this test works</summary><ul style={{ margin: '8px 0 0', paddingLeft: 20, color: '#3A4A66' }}>{bt.result.assumptions.map((a) => <li key={a}>{a}</li>)}</ul></details>
+              <span style={{ fontSize: 14, color: '#5A6780' }}>Past results do not guarantee future results. Always run the bot on a demo account for 2 to 4 weeks before trading real money.</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="row" style={{ gap: 24, alignItems: 'stretch' }}>
+        <div className="glass stack" style={{ flex: '1 1 420px', minWidth: 0, gap: 14, borderRadius: 26, padding: 28 }}>
+          <span className="display" style={{ fontWeight: 700, fontSize: 26 }}>5 · Go-live checklist</span>
+          {['Tested on a demo account for at least 2 to 4 weeks', 'Start with a small trade size', 'Daily loss limit switched on', 'You know how to switch the bot off (remove it from the chart or turn off Algo Trading)'].map((c) => (
+            <div key={c} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 18 }}><span aria-hidden="true" style={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', background: '#FFB547', marginTop: 9 }} /><span>{c}</span></div>
+          ))}
+        </div>
+        <div className="stack" style={{ flex: '1 1 360px', minWidth: 0, background: '#FFB547', color: '#0B1A36', borderRadius: 26, padding: 28, gap: 12, justifyContent: 'center' }}>
+          <span className="display" style={{ fontWeight: 700, fontSize: 26 }}>Your MT5, your control</span>
+          <span style={{ fontSize: 18 }}>Your bot runs inside your own MT5. We never ask for or store your trading password, and you can switch the bot off any time.</span>
+          <span style={{ fontWeight: 600 }}>Live trading risks real money. Start small.</span>
+        </div>
+      </div>
+      {!signedIn && <span style={{ color: '#B9C9E6' }}><Link href="/get-started" style={{ color: '#FFB547' }}>Create a free account</Link> to save your bots and scan them in the Market Scanner.</span>}
+    </div>
+  );
+}
