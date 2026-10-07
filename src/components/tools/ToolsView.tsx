@@ -60,7 +60,7 @@ export function ToolsView({ signedIn }: { signedIn: boolean }) {
             <button type="button" className="toggle" style={{ alignSelf: 'flex-end' }} onClick={() => pick('')}>Close tool</button>
             {open === 'risk' && <RiskCalculator />}
             {open === 'prop' && <PropTracker />}
-            {open === 'scan' && <MarketScanner signedIn={signedIn} onOpenChart={(tv) => { setChartSym(tv); pick('charts'); }} />}
+            {open === 'scan' && <MarketScanner signedIn={signedIn} onOpenChart={(symbol) => { setChartSym(symbol); pick('charts'); }} />}
             {open === 'charts' && <Charts initial={chartSym} />}
             {open === 'bot' && <BotBuilder signedIn={signedIn} />}
             {open === 'journal' && <Journal signedIn={signedIn} />}

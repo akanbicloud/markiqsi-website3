@@ -111,3 +111,49 @@ export const bull = (x: Candle) => x.c > x.o;
 export const bear = (x: Candle) => x.c < x.o;
 export const upperWick = (x: Candle) => x.h - Math.max(x.o, x.c);
 export const lowerWick = (x: Candle) => Math.min(x.o, x.c) - x.l;
+
+export function stdev(values: number[], n: number): number[] {
+  const m = sma(values, n);
+  return values.map((_, i) => {
+    if (i < n - 1) return NaN;
+    let s = 0;
+    for (let k = i - n + 1; k <= i; k++) s += (values[k] - m[i]) ** 2;
+    return Math.sqrt(s / n);
+  });
+}
+
+/** Slow stochastic: %K smoothed by `smooth`, %D = SMA of %K. */
+export function stochastic(c: Candle[], kLen = 14, dLen = 3, smooth = 3) {
+  const raw = c.map((x, i) => {
+    if (i < kLen - 1) return NaN;
+    const hh = highest(c, i - kLen + 1, i);
+    const ll = lowest(c, i - kLen + 1, i);
+    return hh === ll ? 50 : ((x.c - ll) / (hh - ll)) * 100;
+  });
+  const fill = (arr: number[]) => arr.map((v) => (Number.isNaN(v) ? 0 : v));
+  const k = sma(fill(raw), smooth).map((v, i) => (i < kLen + smooth - 2 ? NaN : v));
+  const d = sma(fill(k), dLen).map((v, i) => (i < kLen + smooth + dLen - 3 ? NaN : v));
+  return { k, d };
+}
+
+/** Supertrend: dir[i] = 1 (up) or -1 (down). Uses Wilder ATR like TradingView. */
+export function supertrend(c: Candle[], period = 10, mult = 3) {
+  const a = atr(c, period);
+  const dir = new Array(c.length).fill(0);
+  let up = NaN;
+  let dn = NaN;
+  let d = 1;
+  for (let i = 0; i < c.length; i++) {
+    if (Number.isNaN(a[i])) continue;
+    const mid = (c[i].h + c[i].l) / 2;
+    const u = mid - mult * a[i];
+    const l = mid + mult * a[i];
+    const pc = c[i - 1]?.c ?? c[i].c;
+    up = Number.isNaN(up) ? u : pc > up ? Math.max(u, up) : u;
+    dn = Number.isNaN(dn) ? l : pc < dn ? Math.min(l, dn) : l;
+    if (d === -1 && c[i].c > dn) d = 1;
+    else if (d === 1 && c[i].c < up) d = -1;
+    dir[i] = d;
+  }
+  return dir;
+}

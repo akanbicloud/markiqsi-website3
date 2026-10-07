@@ -1,27 +1,43 @@
-import { atr, body, bear, bull, ema, highest, lowerWick, lowest, macd, rsi, swings, upperWick, type Candle } from './indicators';
+import { atr, body, bear, bull, ema, highest, lowerWick, lowest, macd, rsi, sma, stdev, stochastic, supertrend, swings, upperWick, type Candle } from './indicators';
 
 export type Direction = 'Bullish' | 'Bearish';
 export type Setup = { strategy: string; direction: Direction; strength: number; detail: string };
 
 export type Ctx = {
   c: Candle[];
-  L: number; // index of the last CLOSED candle
+  L: number; // index of the candle being judged (the last CLOSED candle). Nothing after L is ever read.
   atr: number[];
   closes: number[];
   digits: number;
+  memo: Map<string, number[]>;
 };
 
-export function makeCtx(c: Candle[], digits = 5): Ctx | null {
-  if (c.length < 80) return null;
-  return { c, L: c.length - 1, atr: atr(c, 14), closes: c.map((x) => x.c), digits };
+export function makeCtx(c: Candle[], digits = 5, L = c.length - 1): Ctx | null {
+  if (c.length < 80 || L < 79) return null;
+  return { c, L, atr: atr(c, 14), closes: c.map((x) => x.c), digits, memo: new Map() };
 }
+
+/** Same context, judged at another candle. Indicator arrays are shared (they never look ahead). */
+export function at(ctx: Ctx, L: number): Ctx {
+  return { ...ctx, L };
+}
+
+function series(ctx: Ctx, key: string, make: () => number[]) {
+  let v = ctx.memo.get(key);
+  if (!v) {
+    v = make();
+    ctx.memo.set(key, v);
+  }
+  return v;
+}
+const E = (ctx: Ctx, n: number) => series(ctx, `ema${n}`, () => ema(ctx.closes, n));
 
 const clamp = (n: number) => Math.max(1, Math.min(5, Math.round(n)));
 const fmt = (ctx: Ctx, n: number) => n.toFixed(ctx.digits);
 
 function trend(ctx: Ctx): 'up' | 'down' | 'flat' {
-  const e20 = ema(ctx.closes, 20)[ctx.L];
-  const e50 = ema(ctx.closes, 50)[ctx.L];
+  const e20 = E(ctx, 20)[ctx.L];
+  const e50 = E(ctx, 50)[ctx.L];
   if (!(e20 > 0) || !(e50 > 0)) return 'flat';
   if (e20 > e50 && ctx.c[ctx.L].c > e50) return 'up';
   if (e20 < e50 && ctx.c[ctx.L].c < e50) return 'down';
@@ -31,8 +47,8 @@ function trend(ctx: Ctx): 'up' | 'down' | 'flat' {
 // ---------- Classic indicators ----------
 
 export function emaCross(ctx: Ctx, fast = 20, slow = 50): Setup | null {
-  const f = ema(ctx.closes, fast);
-  const s = ema(ctx.closes, slow);
+  const f = E(ctx, fast);
+  const s = E(ctx, slow);
   for (let k = ctx.L; k > ctx.L - 3; k--) {
     if (f[k - 1] <= s[k - 1] && f[k] > s[k]) {
       const st = 2 + (ctx.c[ctx.L].c > f[ctx.L] ? 1 : 0) + (s[ctx.L] > s[ctx.L - 5] ? 1 : 0);
@@ -47,7 +63,7 @@ export function emaCross(ctx: Ctx, fast = 20, slow = 50): Setup | null {
 }
 
 export function rsiExtreme(ctx: Ctx): Setup | null {
-  const r = rsi(ctx.closes, 14)[ctx.L];
+  const r = series(ctx, 'rsi14', () => rsi(ctx.closes, 14))[ctx.L];
   if (!(r >= 0)) return null;
   if (r < 30) return { strategy: 'rsi', direction: 'Bullish', strength: clamp(2 + (r < 25 ? 1 : 0) + (r < 20 ? 1 : 0)), detail: `RSI is oversold at ${r.toFixed(1)} (below 30).` };
   if (r > 70) return { strategy: 'rsi', direction: 'Bearish', strength: clamp(2 + (r > 75 ? 1 : 0) + (r > 80 ? 1 : 0)), detail: `RSI is overbought at ${r.toFixed(1)} (above 70).` };
@@ -71,7 +87,9 @@ export function breakout(ctx: Ctx, n = 20): Setup | null {
 }
 
 export function macdCross(ctx: Ctx): Setup | null {
-  const m = macd(ctx.closes);
+  const line = series(ctx, 'macdL', () => macd(ctx.closes).line);
+  const sig = series(ctx, 'macdS', () => macd(ctx.closes).signal);
+  const m = { line, signal: sig };
   for (let k = ctx.L; k > ctx.L - 2; k--) {
     if (m.line[k - 1] <= m.signal[k - 1] && m.line[k] > m.signal[k]) {
       return { strategy: 'macd', direction: 'Bullish', strength: clamp(2 + (m.line[k] > 0 ? 1 : 0)), detail: `The MACD line crossed above its signal line${m.line[k] < 0 ? ' below zero' : ''}.` };
@@ -260,7 +278,7 @@ export function orderBlock(ctx: Ctx): Setup | null {
 
 export function structureBreak(ctx: Ctx): Setup | null {
   const { c, L } = ctx;
-  const sw = swings(c, 2, L - 150, L - 1);
+  const sw = swings(c, 2, L - 150, L - 2);
   const highs = sw.filter((s) => s.type === 'H');
   const lows = sw.filter((s) => s.type === 'L');
   if (highs.length < 2 || lows.length < 2) return null;
@@ -306,7 +324,7 @@ export function liquiditySweep(ctx: Ctx): Setup | null {
 
 export function optimalTradeEntry(ctx: Ctx): Setup | null {
   const { c, L } = ctx;
-  const sw = swings(c, 2, L - 80, L - 1);
+  const sw = swings(c, 2, L - 80, L - 2);
   if (sw.length < 2) return null;
   const a = ctx.atr[L];
   const x = c[L];
@@ -332,6 +350,86 @@ export function optimalTradeEntry(ctx: Ctx): Setup | null {
   return null;
 }
 
+// ---------- More strategies ----------
+
+export function bollingerBounce(ctx: Ctx, n = 20, k = 2): Setup | null {
+  const { c, L } = ctx;
+  const m = series(ctx, `bbm${n}`, () => sma(ctx.closes, n));
+  const sd = series(ctx, `bbs${n}`, () => stdev(ctx.closes, n));
+  const lo = (i: number) => m[i] - k * sd[i];
+  const hi = (i: number) => m[i] + k * sd[i];
+  if (c[L - 1].c < lo(L - 1) && c[L].c > lo(L)) return { strategy: 'bb', direction: 'Bullish', strength: clamp(3 + (trend(ctx) === 'up' ? 1 : 0)), detail: `Closed back inside the lower Bollinger Band (${n}, ${k}) after trading below it.` };
+  if (c[L - 1].c > hi(L - 1) && c[L].c < hi(L)) return { strategy: 'bb', direction: 'Bearish', strength: clamp(3 + (trend(ctx) === 'down' ? 1 : 0)), detail: `Closed back inside the upper Bollinger Band (${n}, ${k}) after trading above it.` };
+  return null;
+}
+
+export function stochCross(ctx: Ctx, kLen = 14, dLen = 3, smooth = 3, lower = 20, upper = 80): Setup | null {
+  const { L } = ctx;
+  const kk = series(ctx, `stk${kLen}-${dLen}-${smooth}`, () => stochastic(ctx.c, kLen, dLen, smooth).k);
+  const dd = series(ctx, `std${kLen}-${dLen}-${smooth}`, () => stochastic(ctx.c, kLen, dLen, smooth).d);
+  if (kk[L - 1] <= dd[L - 1] && kk[L] > dd[L] && Math.min(kk[L - 1], dd[L - 1]) < lower) return { strategy: 'stoch', direction: 'Bullish', strength: clamp(3), detail: `Stochastic crossed up from oversold (below ${lower}).` };
+  if (kk[L - 1] >= dd[L - 1] && kk[L] < dd[L] && Math.max(kk[L - 1], dd[L - 1]) > upper) return { strategy: 'stoch', direction: 'Bearish', strength: clamp(3), detail: `Stochastic crossed down from overbought (above ${upper}).` };
+  return null;
+}
+
+export function supertrendFlip(ctx: Ctx, period = 10, mult = 3): Setup | null {
+  const d = series(ctx, `st${period}-${mult}`, () => supertrend(ctx.c, period, mult));
+  const { L } = ctx;
+  if (d[L - 1] === -1 && d[L] === 1) return { strategy: 'supertrend', direction: 'Bullish', strength: clamp(3 + (trend(ctx) === 'up' ? 1 : 0)), detail: `Supertrend (${period}, ${mult}) flipped to up.` };
+  if (d[L - 1] === 1 && d[L] === -1) return { strategy: 'supertrend', direction: 'Bearish', strength: clamp(3 + (trend(ctx) === 'down' ? 1 : 0)), detail: `Supertrend (${period}, ${mult}) flipped to down.` };
+  return null;
+}
+
+export function trendPullback(ctx: Ctx, trendLen = 200, emaLen = 20): Setup | null {
+  const { c, L } = ctx;
+  const t = E(ctx, trendLen);
+  const e = E(ctx, emaLen);
+  const x = c[L];
+  if (!(t[L] > 0) || !(e[L] > 0)) return null;
+  if (x.c > t[L] && e[L] > t[L] && x.l <= e[L] && x.c > e[L] && bull(x)) return { strategy: 'pullback', direction: 'Bullish', strength: clamp(3 + (E(ctx, 50)[L] > t[L] ? 1 : 0)), detail: `Uptrend (above the ${trendLen} EMA): price pulled back to the ${emaLen} EMA and closed higher.` };
+  if (x.c < t[L] && e[L] < t[L] && x.h >= e[L] && x.c < e[L] && bear(x)) return { strategy: 'pullback', direction: 'Bearish', strength: clamp(3 + (E(ctx, 50)[L] < t[L] ? 1 : 0)), detail: `Downtrend (below the ${trendLen} EMA): price pulled back to the ${emaLen} EMA and closed lower.` };
+  return null;
+}
+
+export function insideBarBreakout(ctx: Ctx): Setup | null {
+  const { c, L } = ctx;
+  const mother = c[L - 2];
+  const inside = c[L - 1];
+  const x = c[L];
+  if (!(inside.h < mother.h && inside.l > mother.l)) return null;
+  if (x.c > mother.h) return { strategy: 'ibb', direction: 'Bullish', strength: clamp(3 + (trend(ctx) === 'up' ? 1 : 0)), detail: `Broke above an inside-bar pattern (high ${fmt(ctx, mother.h)}).` };
+  if (x.c < mother.l) return { strategy: 'ibb', direction: 'Bearish', strength: clamp(3 + (trend(ctx) === 'down' ? 1 : 0)), detail: `Broke below an inside-bar pattern (low ${fmt(ctx, mother.l)}).` };
+  return null;
+}
+
+/** London breakout: break of the Asian range (00:00–07:00 UTC) between 07:00 and 11:00 UTC. Intraday charts only. */
+export function londonBreakout(ctx: Ctx): Setup | null {
+  const { c, L } = ctx;
+  if (c[L].t - c[L - 1].t > 3600000) return null;
+  const hourOf = (t: number) => new Date(t).getUTCHours();
+  const dayOf = (t: number) => Math.floor(t / 86400000);
+  const h = hourOf(c[L].t);
+  if (h < 7 || h >= 11) return null;
+  const day = dayOf(c[L].t);
+  let hi = -Infinity;
+  let lo = Infinity;
+  let n = 0;
+  let firstBreak = true;
+  for (let i = L - 1; i >= 0 && dayOf(c[i].t) === day; i--) {
+    const hh = hourOf(c[i].t);
+    if (hh < 7) { hi = Math.max(hi, c[i].h); lo = Math.min(lo, c[i].l); n++; }
+  }
+  if (n < 3) return null;
+  for (let i = L - 1; i >= 0 && dayOf(c[i].t) === day; i--) {
+    const hh = hourOf(c[i].t);
+    if (hh >= 7 && (c[i].c > hi || c[i].c < lo)) { firstBreak = false; break; }
+  }
+  if (!firstBreak) return null;
+  if (c[L].c > hi) return { strategy: 'london', direction: 'Bullish', strength: clamp(3), detail: `London breakout: closed above the Asian session high (${fmt(ctx, hi)}).` };
+  if (c[L].c < lo) return { strategy: 'london', direction: 'Bearish', strength: clamp(3), detail: `London breakout: closed below the Asian session low (${fmt(ctx, lo)}).` };
+  return null;
+}
+
 export const DETECTORS: Record<string, (ctx: Ctx) => Setup | null> = {
   sd: supplyDemand,
   sr: supportResistance,
@@ -345,6 +443,12 @@ export const DETECTORS: Record<string, (ctx: Ctx) => Setup | null> = {
   rsi: rsiExtreme,
   brk: (ctx) => breakout(ctx, 20),
   macd: macdCross,
+  bb: (ctx) => bollingerBounce(ctx),
+  stoch: (ctx) => stochCross(ctx),
+  supertrend: (ctx) => supertrendFlip(ctx),
+  pullback: (ctx) => trendPullback(ctx),
+  ibb: insideBarBreakout,
+  london: londonBreakout,
 };
 
 export function runAll(c: Candle[], digits: number, strategies = Object.keys(DETECTORS)): Setup[] {

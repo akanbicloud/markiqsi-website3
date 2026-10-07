@@ -151,6 +151,27 @@ const SCHEMA = [
     error TEXT,
     PRIMARY KEY (symbol, timeframe)
   )`,
+  `CREATE TABLE IF NOT EXISTS mq_rate (
+    bucket TEXT PRIMARY KEY,
+    count INT NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS mq_history (
+    symbol TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+    t BIGINT NOT NULL,
+    o DOUBLE PRECISION NOT NULL,
+    h DOUBLE PRECISION NOT NULL,
+    l DOUBLE PRECISION NOT NULL,
+    c DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (symbol, timeframe, t)
+  )`,
+  `CREATE TABLE IF NOT EXISTS mq_history_meta (
+    symbol TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+    oldest_reached BOOLEAN NOT NULL DEFAULT FALSE,
+    newest_fetched_at TIMESTAMPTZ,
+    PRIMARY KEY (symbol, timeframe)
+  )`,
   `CREATE TABLE IF NOT EXISTS mq_scan_results (
     setup_key TEXT PRIMARY KEY,
     symbol TEXT NOT NULL,

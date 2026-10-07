@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const rules = sanitizeRules(b.rules as never);
   const sym = findSymbol(rules.symbol);
   if (!sym) return fail(`We do not have price history for ${rules.symbol} yet. Try EURUSD, GBPUSD, USDJPY, XAUUSD or BTCUSD.`);
-  const tf: TF = rules.timeframe === 'H4' ? '4h' : rules.timeframe === 'D1' ? '1day' : '1h';
+  const tf = ({ M1: '1min', M5: '5min', M15: '15min', M30: '30min', H1: '1h', H4: '4h', D1: '1day', W1: '1week', MN1: '1month' } as Record<string, TF>)[rules.timeframe];
   try {
     const candles = await getBacktestCandles(sym, tf);
     if (candles.length < 200) return fail('Not enough price history to test this market.');

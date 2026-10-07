@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { GROUPS, STRATEGIES, TIMEFRAMES } from '@/lib/trading/symbols';
 
-type Row = { setup_key: string; label: string; tfLabel: string; direction: string; strategyLabel: string; strength: number; detail: string; news: string; bias: string; bar_time: string; tv: string };
+type Row = { setup_key: string; symbol: string; htfLabel: string; htfTrend: string; htfAgrees: boolean; label: string; tfLabel: string; direction: string; strategyLabel: string; strength: number; detail: string; news: string; bias: string; bar_time: string; tv: string };
 
 const GROUP_ORDER = ['Price action', 'ICT & SMC', 'Classic indicators'];
 
@@ -15,30 +15,31 @@ function ago(iso: string) {
   return h < 48 ? `${h} hr ago` : `${Math.round(h / 24)} days ago`;
 }
 
-export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; onOpenChart: (tv: string) => void }) {
+export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; onOpenChart: (symbol: string) => void }) {
   const [markets, setMarkets] = useState<string[]>([...GROUPS]);
-  const [tf, setTf] = useState('all');
+  const [tfSel, setTfSel] = useState<string[]>(['1h', '4h', '1day']);
+  const [confirm, setConfirm] = useState(false);
   const [strats, setStrats] = useState<string[]>(['sd', 'candles', 'fvg', 'bos']);
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [meta, setMeta] = useState<{ updatedAt: string | null; series: number; mineNote: string }>({ updatedAt: null, series: 0, mineNote: '' });
+  const [meta, setMeta] = useState<{ updatedAt: string | null; series: number; mineNote: string; fastNote: string }>({ updatedAt: null, series: 0, mineNote: '', fastNote: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [alert, setAlert] = useState<{ on: boolean; telegram: boolean } | null>(null);
   const [alertMsg, setAlertMsg] = useState('');
 
   const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-  const tfs = tf === 'all' ? TIMEFRAMES.map((t) => t.key) : [tf];
+  const tfs = tfSel;
 
   const load = useCallback(async () => {
     setBusy(true);
     setErr('');
     try {
-      const u = new URLSearchParams({ markets: markets.join(','), tf: tfs.join(','), strategies: strats.join(',') });
+      const u = new URLSearchParams({ markets: markets.join(','), tf: tfs.join(','), strategies: strats.join(','), confirm: confirm ? '1' : '0' });
       const r = await fetch(`/api/scanner?${u}`);
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || 'Could not load the scanner.');
       setRows(d.results);
-      setMeta({ updatedAt: d.updatedAt, series: d.series, mineNote: d.mineNote });
+      setMeta({ updatedAt: d.updatedAt, series: d.series, mineNote: d.mineNote, fastNote: d.fastNote || '' });
     } catch (e) {
       setErr((e as Error).message);
       setRows([]);
@@ -46,7 +47,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
       setBusy(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markets.join(), tf, strats.join()]);
+  }, [markets.join(), tfSel.join(), strats.join(), confirm]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -56,7 +57,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
         if (d.alert?.active) {
           setMarkets(d.alert.markets);
           setStrats(d.alert.strategies);
-          setTf(d.alert.timeframes.length === 1 ? d.alert.timeframes[0] : 'all');
+          setTfSel(d.alert.timeframes);
         }
       }
     }).catch(() => {});
@@ -86,11 +87,16 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
         </div>
       </div>
       <div className="stack" style={{ gap: 10 }}>
-        <span className="label" style={{ fontSize: 18 }}>2 · Timeframe</span>
-        <div className="row" style={{ gap: 8 }} role="group" aria-label="Timeframe">
-          <button type="button" className="toggle" aria-pressed={tf === 'all'} onClick={() => setTf('all')}>All timeframes</button>
-          {TIMEFRAMES.map((t) => <button key={t.key} type="button" className="toggle" aria-pressed={tf === t.key} onClick={() => setTf(t.key)}>{t.label}</button>)}
+        <span className="label" style={{ fontSize: 18 }}>2 · Timeframes <span className="faint" style={{ fontWeight: 500, fontSize: 15 }}>(pick one or more, from 1 minute to monthly)</span></span>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }} role="group" aria-label="Timeframes">
+          {TIMEFRAMES.map((t) => <button key={t.key} type="button" className="toggle" aria-pressed={tfSel.includes(t.key)} onClick={() => setTfSel(toggle(tfSel, t.key).length ? toggle(tfSel, t.key) : tfSel)}>{t.label}</button>)}
+          <button type="button" className="linkbtn" onClick={() => setTfSel(TIMEFRAMES.map((t) => t.key))}>All</button>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} style={{ width: 20, height: 20, accentColor: '#1A5FD0' }} />
+          <span><strong>Only show setups the higher timeframe agrees with</strong> <span className="faint small">(for example a 15m buy only if the 1H trend is up)</span></span>
+        </label>
+        <span className="small faint">1m to 30m charts load when you scan them, so they can take a minute the first time.</span>
       </div>
       <div className="stack" style={{ gap: 12 }}>
         <span className="label" style={{ fontSize: 18 }}>3 · Strategies <span className="faint" style={{ fontWeight: 500, fontSize: 15 }}>(pick as many as you like)</span></span>
@@ -117,6 +123,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
           <span className="display" style={{ fontWeight: 700, fontSize: 28 }} aria-live="polite">{busy ? 'Scanning…' : rows ? `${rows.length} setup${rows.length === 1 ? '' : 's'} found` : ''}</span>
           <span className="small faint">{meta.updatedAt ? `Prices updated ${ago(meta.updatedAt)}` : ''}</span>
         </div>
+        {meta.fastNote && <div className="note note-info">{meta.fastNote}</div>}
         {meta.mineNote && <div className="note note-info">{meta.mineNote} <Link href="/tools?tool=bot">Open the Bot Builder</Link></div>}
         {err && <div role="alert" className="note note-bad">{err}</div>}
         {rows?.map((r) => (
@@ -136,9 +143,10 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
               <span style={{ fontSize: 17, fontWeight: 600 }}>{r.detail}</span>
               {r.news && <span className="note note-bad" style={{ alignSelf: 'flex-start', padding: '6px 10px', fontSize: 15 }}><strong>News ahead:</strong> {r.news}</span>}
               {r.bias && <span style={{ fontSize: 15, color: 'var(--text)' }}><strong style={{ color: 'var(--ink)' }}>Fundamentals:</strong> {r.bias}</span>}
+              {r.htfLabel && <span style={{ fontSize: 15, color: r.htfAgrees ? '#0B8A55' : 'var(--text)' }}><strong style={{ color: 'var(--ink)' }}>{r.htfLabel} trend:</strong> {r.htfTrend === 'unknown' ? 'not loaded yet' : r.htfTrend}{r.htfAgrees ? ' ✓ agrees' : r.htfTrend === 'unknown' || r.htfTrend === 'flat' ? '' : ' (against this setup)'}</span>}
             </div>
             <div className="row" style={{ flex: '0 1 220px', gap: 8 }}>
-              {r.tv && <button type="button" className="btn btn-sm" style={{ minHeight: 44, fontSize: 15 }} onClick={() => onOpenChart(r.tv)}>Open chart</button>}
+              <button type="button" className="btn btn-sm" style={{ minHeight: 44, fontSize: 15 }} onClick={() => onOpenChart(r.symbol)}>Open chart</button>
             </div>
           </article>
         ))}
@@ -151,7 +159,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
         <div className="stack" style={{ flex: '1 1 420px', gap: 6 }}>
           <span className="display" style={{ fontWeight: 700, fontSize: 24 }}>Get this scan on Telegram</span>
           <span style={{ color: '#B9C9E6' }}>
-            {alert?.on ? `Alerts are on: ${strats.map(label).join(', ') || 'no strategies picked'} on ${tf === 'all' ? 'all timeframes' : TIMEFRAMES.find((t) => t.key === tf)?.label}.` : 'Get a message on Telegram the moment a new setup matches your markets, timeframe and strategies.'}
+            {alert?.on ? `Alerts are on: ${strats.map(label).join(', ') || 'no strategies picked'} on ${tfSel.map((k) => TIMEFRAMES.find((t) => t.key === k)?.label).join(', ')}.` : 'Get a message on Telegram the moment a new setup matches your markets, timeframe and strategies.'}
             {alert?.on && !alert.telegram && <> <Link href="/account#telegram" style={{ color: '#FFB547' }}>Connect Telegram</Link> to receive them.</>}
           </span>
           {alertMsg && <span role="alert" style={{ color: '#FFB4A0' }}>{alertMsg}</span>}
@@ -161,7 +169,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
           <button type="button" className="btn btn-amber" onClick={() => saveAlert(true)}>{alert?.on ? 'Update alerts' : 'Turn on Telegram alerts'}</button>
         </div>
       </div>
-      <span className="small faint">Scans use finished candles on the 1-hour, 4-hour and daily charts and refresh through the day. A setup is not a signal to buy or sell. ICT, SMC and zone setups are found with fixed rules, so they can differ a little from how you would mark them by hand.</span>
+      <span className="small faint">Scans use finished candles only. 1H to monthly charts refresh automatically through the day; 1m to 30m refresh when you scan them. A setup is not a signal to buy or sell. ICT, SMC and zone setups are found with fixed rules, so they can differ a little from how you would mark them by hand.</span>
     </div>
   );
 }

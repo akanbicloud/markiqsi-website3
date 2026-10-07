@@ -1,11 +1,27 @@
 import { ema, highest, lowest, macd, rsi, sma, type Candle } from './indicators';
+import { DETECTORS, bollingerBounce, makeCtx, at, stochCross, supertrendFlip, trendPullback, type Ctx } from './detect';
 
-export type EntryKind = 'ema_cross' | 'sma_cross' | 'rsi' | 'macd_cross' | 'breakout';
+export type EntryKind =
+  | 'ema_cross' | 'sma_cross' | 'rsi' | 'macd_cross' | 'breakout'
+  | 'bb' | 'stoch' | 'supertrend' | 'pullback'
+  | 'sd' | 'sr' | 'candles' | 'fvg' | 'ob' | 'bos' | 'liq' | 'ote' | 'ibb' | 'london';
+
+export type Params = {
+  fast?: number; slow?: number; period?: number; lower?: number; upper?: number; lookback?: number;
+  bbPeriod?: number; bbDev?: number; stochK?: number; stochD?: number; stochSmooth?: number;
+  stLen?: number; stMult?: number; trendLen?: number; emaLen?: number;
+};
+
+export type Timeframe = 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1' | 'W1' | 'MN1';
+
 export type Rules = {
   name: string;
-  symbol: string; // e.g. EURUSD
-  timeframe: 'H1' | 'H4' | 'D1';
-  entry: { kind: EntryKind; fast?: number; slow?: number; period?: number; lower?: number; upper?: number; lookback?: number };
+  symbol: string;
+  timeframe: Timeframe;
+  entry: { kind: EntryKind } & Params;
+  confirm: { kind: EntryKind; within: number } | null;
+  trendFilter: 'none' | 'ema200';
+  session: 'any' | 'london' | 'newyork' | 'london_ny';
   direction: 'both' | 'long' | 'short';
   stopLossPips: number;
   takeProfitPips: number;
@@ -14,11 +30,60 @@ export type Rules = {
   dailyLossPercent: number;
 };
 
+export const TIMEFRAME_LABEL: Record<Timeframe, string> = { M1: '1-minute', M5: '5-minute', M15: '15-minute', M30: '30-minute', H1: '1-hour', H4: '4-hour', D1: 'daily', W1: 'weekly', MN1: 'monthly' };
+
+export const ENTRY_GROUPS: { group: string; items: { kind: EntryKind; label: string; desc: string }[] }[] = [
+  { group: 'Supply & demand and price action', items: [
+    { kind: 'sd', label: 'Supply & demand zones', desc: 'Trade when price returns to a fresh zone where a strong move started.' },
+    { kind: 'sr', label: 'Support & resistance', desc: 'Trade the test of a level price has turned at before.' },
+    { kind: 'candles', label: 'Candle patterns', desc: 'Engulfing, pin bars, morning and evening stars.' },
+    { kind: 'ibb', label: 'Inside bar breakout', desc: 'Trade the break of an inside-bar pattern.' },
+  ] },
+  { group: 'ICT & SMC', items: [
+    { kind: 'fvg', label: 'Fair value gap (FVG)', desc: 'Enter when price trades back into an unfilled gap.' },
+    { kind: 'ob', label: 'Order block', desc: 'Enter at the last opposite candle before a break of structure.' },
+    { kind: 'bos', label: 'Break of structure / CHoCH', desc: 'Enter when price breaks the last swing high or low.' },
+    { kind: 'liq', label: 'Liquidity sweep', desc: 'Enter after price sweeps an old high/low and closes back.' },
+    { kind: 'ote', label: 'Optimal trade entry (OTE)', desc: 'Enter on a 62–79% pullback of the last leg.' },
+    { kind: 'london', label: 'London breakout', desc: 'Trade the break of the Asian range (07:00–11:00 UTC).' },
+  ] },
+  { group: 'Indicators', items: [
+    { kind: 'ema_cross', label: 'EMA crossover', desc: 'Fast EMA crosses the slow EMA.' },
+    { kind: 'sma_cross', label: 'SMA crossover', desc: 'Fast SMA crosses the slow SMA.' },
+    { kind: 'pullback', label: 'Trend pullback', desc: 'With the 200 EMA trend, buy/sell the pullback to the 20 EMA.' },
+    { kind: 'rsi', label: 'RSI levels', desc: 'RSI comes back from oversold or overbought.' },
+    { kind: 'macd_cross', label: 'MACD crossover', desc: 'MACD line crosses its signal line.' },
+    { kind: 'bb', label: 'Bollinger Band bounce', desc: 'Price closes back inside the bands.' },
+    { kind: 'stoch', label: 'Stochastic cross', desc: 'Stochastic crosses from oversold or overbought.' },
+    { kind: 'supertrend', label: 'Supertrend flip', desc: 'Supertrend changes direction.' },
+    { kind: 'breakout', label: 'Breakout', desc: 'Close above the recent high or below the recent low.' },
+  ] },
+];
+
+export const ENTRY_LABEL = Object.fromEntries(ENTRY_GROUPS.flatMap((g) => g.items.map((i) => [i.kind, i.label]))) as Record<EntryKind, string>;
+const KINDS = Object.keys(ENTRY_LABEL) as EntryKind[];
+
+/** Ready-made strategies people can start from. */
+export const PRESETS: { name: string; desc: string; rules: Partial<Rules> }[] = [
+  { name: 'ICT: Sweep + FVG', desc: 'After a liquidity sweep, enter on the fair value gap. London and New York only.', rules: { name: 'ICT Sweep + FVG', timeframe: 'M15', entry: { kind: 'fvg' }, confirm: { kind: 'liq', within: 10 }, session: 'london_ny', stopLossPips: 15, takeProfitPips: 30 } },
+  { name: 'SMC: BOS + Order block', desc: 'After a break of structure, enter at the order block.', rules: { name: 'SMC BOS + OB', timeframe: 'H1', entry: { kind: 'ob' }, confirm: { kind: 'bos', within: 15 }, stopLossPips: 20, takeProfitPips: 50 } },
+  { name: 'Supply & demand + candle', desc: 'Enter at a fresh zone only when a reversal candle confirms.', rules: { name: 'S&D + candle', timeframe: 'H4', entry: { kind: 'candles' }, confirm: { kind: 'sd', within: 2 }, stopLossPips: 30, takeProfitPips: 90 } },
+  { name: 'Trend pullback', desc: 'Trade with the 200 EMA trend, entering on pullbacks to the 20 EMA.', rules: { name: 'Trend pullback', timeframe: 'H1', entry: { kind: 'pullback', trendLen: 200, emaLen: 20 }, stopLossPips: 20, takeProfitPips: 40 } },
+  { name: 'London breakout', desc: 'Trade the break of the Asian range in the London morning.', rules: { name: 'London breakout', symbol: 'GBPUSD', timeframe: 'M15', entry: { kind: 'london' }, stopLossPips: 20, takeProfitPips: 40, maxTradesPerDay: 1 } },
+  { name: 'OTE with trend filter', desc: 'Fibonacci 62–79% pullbacks, only with the 200 EMA trend.', rules: { name: 'OTE + trend', timeframe: 'H1', entry: { kind: 'ote' }, trendFilter: 'ema200', stopLossPips: 25, takeProfitPips: 60 } },
+  { name: 'Bollinger + RSI', desc: 'Band bounce confirmed by RSI coming back from extreme.', rules: { name: 'BB + RSI', timeframe: 'H1', entry: { kind: 'bb', bbPeriod: 20, bbDev: 2 }, confirm: { kind: 'rsi', within: 3 }, stopLossPips: 20, takeProfitPips: 30 } },
+  { name: 'Supertrend', desc: 'Follow Supertrend flips, filtered by the 200 EMA.', rules: { name: 'Supertrend', timeframe: 'H4', entry: { kind: 'supertrend', stLen: 10, stMult: 3 }, trendFilter: 'ema200', stopLossPips: 40, takeProfitPips: 80 } },
+  { name: 'EMA crossover', desc: 'The classic 20/50 EMA cross.', rules: { name: 'EMA 20/50', timeframe: 'H1', entry: { kind: 'ema_cross', fast: 20, slow: 50 }, stopLossPips: 20, takeProfitPips: 40 } },
+];
+
 export const DEFAULT_RULES: Rules = {
   name: 'My strategy',
   symbol: 'EURUSD',
   timeframe: 'H1',
   entry: { kind: 'ema_cross', fast: 20, slow: 50 },
+  confirm: null,
+  trendFilter: 'none',
+  session: 'any',
   direction: 'both',
   stopLossPips: 20,
   takeProfitPips: 40,
@@ -27,47 +92,45 @@ export const DEFAULT_RULES: Rules = {
   dailyLossPercent: 3,
 };
 
-export const ENTRY_LABEL: Record<EntryKind, string> = {
-  ema_cross: 'EMA crossover',
-  sma_cross: 'SMA crossover',
-  rsi: 'RSI levels',
-  macd_cross: 'MACD crossover',
-  breakout: 'Breakout of recent high/low',
-};
-
 const int = (v: unknown, d: number, lo: number, hi: number) => {
   const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d;
+  return v != null && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d;
 };
 const num = (v: unknown, d: number, lo: number, hi: number) => {
   const n = Number(v);
-  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d;
+  return v != null && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d;
 };
 
-/** Makes any incoming rules object safe and complete. */
+/** Every parameter, always filled in, so code generators never see a missing value. */
+export function fullParams(p: Params = {}): Required<Params> {
+  let fast = int(p.fast, 20, 2, 400);
+  let slow = int(p.slow, 50, 3, 500);
+  if (fast >= slow) [fast, slow] = [Math.min(fast, slow), Math.max(fast, slow) + (fast === slow ? 1 : 0)];
+  return {
+    fast, slow,
+    period: int(p.period, 14, 2, 100), lower: num(p.lower, 30, 1, 49), upper: num(p.upper, 70, 51, 99),
+    lookback: int(p.lookback, 20, 3, 300),
+    bbPeriod: int(p.bbPeriod, 20, 5, 200), bbDev: num(p.bbDev, 2, 0.5, 5),
+    stochK: int(p.stochK, 14, 3, 100), stochD: int(p.stochD, 3, 1, 20), stochSmooth: int(p.stochSmooth, 3, 1, 20),
+    stLen: int(p.stLen, 10, 2, 100), stMult: num(p.stMult, 3, 0.5, 10),
+    trendLen: int(p.trendLen, 200, 50, 400), emaLen: int(p.emaLen, 20, 5, 100),
+  };
+}
+
 export function sanitizeRules(r: Partial<Rules> | null | undefined): Rules {
   const x = r || {};
   const e = (x.entry || {}) as Rules['entry'];
-  const kinds: EntryKind[] = ['ema_cross', 'sma_cross', 'rsi', 'macd_cross', 'breakout'];
-  const kind = kinds.includes(e.kind) ? e.kind : 'ema_cross';
-  const entry: Rules['entry'] = { kind };
-  if (kind === 'ema_cross' || kind === 'sma_cross') {
-    entry.fast = int(e.fast, 20, 2, 400);
-    entry.slow = int(e.slow, 50, 3, 500);
-    if (entry.fast! >= entry.slow!) [entry.fast, entry.slow] = [Math.min(entry.fast!, entry.slow!), Math.max(entry.fast!, entry.slow!) + (entry.fast === entry.slow ? 1 : 0)];
-  } else if (kind === 'rsi') {
-    entry.period = int(e.period, 14, 2, 100);
-    entry.lower = num(e.lower, 30, 1, 49);
-    entry.upper = num(e.upper, 70, 51, 99);
-  } else if (kind === 'breakout') {
-    entry.lookback = int(e.lookback, 20, 3, 300);
-  }
-  const tf = ['H1', 'H4', 'D1'].includes(x.timeframe as string) ? (x.timeframe as Rules['timeframe']) : 'H1';
+  const kind = KINDS.includes(e.kind) ? e.kind : 'ema_cross';
+  const tfs: Timeframe[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'W1', 'MN1'];
+  const cf = x.confirm && KINDS.includes(x.confirm.kind) && x.confirm.kind !== kind ? { kind: x.confirm.kind, within: int(x.confirm.within, 10, 0, 50) } : null;
   return {
     name: (typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'My strategy').slice(0, 60),
     symbol: (typeof x.symbol === 'string' ? x.symbol : 'EURUSD').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'EURUSD',
-    timeframe: tf,
-    entry,
+    timeframe: tfs.includes(x.timeframe as Timeframe) ? (x.timeframe as Timeframe) : 'H1',
+    entry: { kind, ...fullParams(e) },
+    confirm: cf,
+    trendFilter: x.trendFilter === 'ema200' ? 'ema200' : 'none',
+    session: ['london', 'newyork', 'london_ny'].includes(x.session as string) ? (x.session as Rules['session']) : 'any',
     direction: ['both', 'long', 'short'].includes(x.direction as string) ? (x.direction as Rules['direction']) : 'both',
     stopLossPips: num(x.stopLossPips, 20, 1, 5000),
     takeProfitPips: num(x.takeProfitPips, 40, 1, 20000),
@@ -76,6 +139,8 @@ export function sanitizeRules(r: Partial<Rules> | null | undefined): Rules {
     dailyLossPercent: num(x.dailyLossPercent, 3, 0.5, 50),
   };
 }
+
+// ---------- Plain-words reader ----------
 
 const SYMBOL_WORDS: [RegExp, string][] = [
   [/\bgold\b|xau\s*\/?\s*usd/i, 'XAUUSD'],
@@ -86,27 +151,44 @@ const SYMBOL_WORDS: [RegExp, string][] = [
   [/\b(nasdaq|nas100|ndx|us100)\b/i, 'QQQ'],
 ];
 
-/** Reads common strategy descriptions without AI. Returns the rules it understood and questions about anything missing. */
+const PATTERN_WORDS: [RegExp, EntryKind][] = [
+  [/fair value gap|\bfvg\b|imbalance/i, 'fvg'],
+  [/order ?block|\bob\b/i, 'ob'],
+  [/liquidity (sweep|grab)|stop hunt|sweep(s|ing)? (the )?(highs?|lows?|liquidity)/i, 'liq'],
+  [/break of structure|\bbos\b|choch|change of character|market structure shift|\bmss\b/i, 'bos'],
+  [/\bote\b|optimal trade entry|golden zone|0?\.?62|fib(onacci)? retracement/i, 'ote'],
+  [/supply|demand/i, 'sd'],
+  [/support|resistance/i, 'sr'],
+  [/london (open )?breakout|asian range/i, 'london'],
+  [/inside bar breakout|inside[- ]bar break/i, 'ibb'],
+  [/engulf|pin ?bar|hammer|shooting star|morning star|evening star|candle(stick)? pattern/i, 'candles'],
+  [/bollinger/i, 'bb'],
+  [/stoch/i, 'stoch'],
+  [/supertrend|super trend/i, 'supertrend'],
+  [/pull ?back/i, 'pullback'],
+];
+
 export function parseStrategy(text: string): { rules: Rules; understood: string[]; questions: string[]; confident: boolean } {
   const t = text.replace(/\s+/g, ' ');
   const r: Rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
   const understood: string[] = [];
   const questions: string[] = [];
   let entryFound = false;
+  const wantsBuy = /\bbuy\b|\blong\b|\bbullish\b/i.test(t);
+  const wantsSell = /\bsell\b|\bshort\b|\bbearish\b/i.test(t);
 
   const pair = t.match(/\b(EUR|GBP|USD|AUD|NZD|CAD|CHF|JPY)\s*\/?\s*(EUR|GBP|USD|AUD|NZD|CAD|CHF|JPY)\b/i);
-  if (pair) {
-    r.symbol = (pair[1] + pair[2]).toUpperCase();
-    understood.push('market');
-  } else {
-    for (const [re, s] of SYMBOL_WORDS) if (re.test(t)) { r.symbol = s; understood.push('market'); break; }
-  }
+  if (pair) { r.symbol = (pair[1] + pair[2]).toUpperCase(); understood.push('market'); }
+  else for (const [re, s] of SYMBOL_WORDS) if (re.test(t)) { r.symbol = s; understood.push('market'); break; }
   if (!understood.includes('market')) questions.push('Which market should it trade? (for example EUR/USD or gold)');
 
-  if (/\b(4\s*-?\s*h(ou)?r?|h4|four[- ]hour)\b/i.test(t)) r.timeframe = 'H4';
-  else if (/\b(daily|d1|1\s*-?\s*day|day chart)\b/i.test(t)) r.timeframe = 'D1';
-  else if (/\b(1\s*-?\s*h(ou)?r?|h1|hourly|one[- ]hour)\b/i.test(t)) r.timeframe = 'H1';
-  else questions.push('Which chart timeframe? (1-hour, 4-hour or daily)');
+  const tf: [RegExp, Timeframe][] = [
+    [/\b(monthly|1\s*-?\s*month|mn1?)\b/i, 'MN1'], [/\b(weekly|1\s*-?\s*week|w1)\b/i, 'W1'], [/\b(daily|d1|1\s*-?\s*day|day chart)\b/i, 'D1'],
+    [/\b(4\s*-?\s*h(ou)?r?|h4|four[- ]hour)\b/i, 'H4'], [/\b(1\s*-?\s*h(ou)?r?|h1|hourly|one[- ]hour)\b/i, 'H1'],
+    [/\b(30\s*-?\s*min(ute)?s?|m30)\b/i, 'M30'], [/\b(15\s*-?\s*min(ute)?s?|m15)\b/i, 'M15'], [/\b(5\s*-?\s*min(ute)?s?|m5)\b/i, 'M5'], [/\b(1\s*-?\s*min(ute)?|m1)\b/i, 'M1'],
+  ];
+  const tfHit = tf.find(([re]) => re.test(t));
+  if (tfHit) r.timeframe = tfHit[1]; else questions.push('Which chart timeframe? (1-minute up to monthly)');
 
   const cross = t.match(/(\d+)\s*(?:-?period\s*)?(ema|sma|ma|moving average)s?\b[^.]*?\bcross(?:es|ing)?\s*(above|over|below|under)\s*(?:the\s*)?(\d+)\s*(ema|sma|ma|moving average)?/i)
     || t.match(/(ema|sma|ma)\s*\(?\s*(\d+)\s*\)?[^.]*?\bcross(?:es|ing)?\s*(above|over|below|under)\s*(?:the\s*)?(ema|sma|ma)?\s*\(?\s*(\d+)/i);
@@ -116,40 +198,57 @@ export function parseStrategy(text: string): { rules: Rules; understood: string[
     else { type = cross[1]; fast = +cross[2]; dir = cross[3]; slow = +cross[5]; }
     r.entry = { kind: /sma|^ma$|moving average/i.test(type) && !/ema/i.test(type) ? 'sma_cross' : 'ema_cross', fast: Math.min(fast, slow), slow: Math.max(fast, slow) };
     entryFound = true;
-    const buyCross = /above|over/i.test(dir);
-    r.direction = /\bsell\b|\bshort\b/i.test(t) && /\bbuy\b|\blong\b/i.test(t) ? 'both' : buyCross ? 'long' : 'short';
-    if (r.direction !== 'both' && !/\bsell\b|\bshort\b/i.test(t)) questions.push(`Should it also sell when the ${fast} crosses below the ${slow}?`);
+    r.direction = wantsBuy && wantsSell ? 'both' : /above|over/i.test(dir) ? 'long' : 'short';
+    if (r.direction !== 'both' && !wantsSell) questions.push(`Should it also sell when the ${fast} crosses below the ${slow}?`);
   }
-  if (!entryFound) {
+  const patterns = PATTERN_WORDS.filter(([re]) => re.test(t)).map(([, k]) => k);
+  if (!entryFound && /\brsi\b/i.test(t) && !patterns.length) {
     const m = t.match(/rsi\s*\(?\s*(\d+)?\s*\)?[^.]*?\b(below|under|less than|<)\s*(\d+)/i);
     const m2 = t.match(/rsi\s*\(?\s*(\d+)?\s*\)?[^.]*?\b(above|over|greater than|>)\s*(\d+)/i);
-    if (m || m2) {
-      r.entry = { kind: 'rsi', period: +(m?.[1] || m2?.[1] || 14), lower: m ? +m[3] : 30, upper: m2 ? +m2[3] : 70 };
-      entryFound = true;
-      r.direction = m && m2 ? 'both' : m ? 'long' : 'short';
-      if (!(m && m2)) questions.push(m ? `Should it also sell when RSI goes above ${r.entry.upper}?` : `Should it also buy when RSI goes below ${r.entry.lower}?`);
-    }
+    r.entry = { kind: 'rsi', period: +(m?.[1] || m2?.[1] || 14), lower: m ? +m[3] : 30, upper: m2 ? +m2[3] : 70 };
+    entryFound = true;
+    r.direction = (m && m2) || (!m && !m2) ? 'both' : m ? 'long' : 'short';
+  }
+  if (!entryFound && patterns.length) {
+    // the LAST pattern mentioned is usually the entry trigger ("after a sweep, enter on the FVG")
+    const order = patterns.map((k) => ({ k, i: t.search(PATTERN_WORDS.find(([, kk]) => kk === k)![0]) })).sort((a, b) => a.i - b.i);
+    r.entry = { kind: order[order.length - 1].k };
+    if (order.length > 1) r.confirm = { kind: order[order.length - 2].k, within: 10 };
+    entryFound = true;
+    r.direction = wantsBuy && !wantsSell ? 'long' : wantsSell && !wantsBuy ? 'short' : 'both';
+    const bb = t.match(/bollinger[^.]*?\(?\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)/i);
+    if (bb) Object.assign(r.entry, { bbPeriod: +bb[1], bbDev: +bb[2] });
+    const st = t.match(/super ?trend[^.]*?\(?\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)/i);
+    if (st) Object.assign(r.entry, { stLen: +st[1], stMult: +st[2] });
   }
   if (!entryFound && /macd/i.test(t)) {
     r.entry = { kind: 'macd_cross' };
     entryFound = true;
-    r.direction = /\bsell\b|\bshort\b/i.test(t) && !/\bbuy\b|\blong\b/i.test(t) ? 'short' : /\bbuy\b|\blong\b/i.test(t) && !/\bsell\b|\bshort\b/i.test(t) ? 'long' : 'both';
+    r.direction = wantsSell && !wantsBuy ? 'short' : wantsBuy && !wantsSell ? 'long' : 'both';
   }
   if (!entryFound) {
     const b = t.match(/break(?:s|out)?[^.]*?(\d+)\s*-?\s*(?:bar|candle|day|period)s?\s*(high|low)/i) || t.match(/(\d+)\s*-?\s*(?:bar|candle|day|period)s?\s*(high|low)[^.]*?break/i);
     if (b) {
       r.entry = { kind: 'breakout', lookback: +b[1] };
       entryFound = true;
-      r.direction = /\bsell\b|\bshort\b|\blow\b/i.test(t) && /\bbuy\b|\blong\b|\bhigh\b/i.test(t) ? 'both' : /high/i.test(b[2]) ? 'long' : 'short';
+      r.direction = wantsBuy && wantsSell ? 'both' : /high/i.test(b[2]) ? 'long' : 'short';
     }
   }
   if (entryFound) understood.push('entry');
-  else questions.push('When exactly should it buy or sell? (for example "when the 20 EMA crosses above the 50 EMA" or "when RSI goes below 30")');
+  else questions.push('When exactly should it buy or sell? For example "enter on a fair value gap after a liquidity sweep" or "when the 20 EMA crosses above the 50 EMA".');
+
+  if (/200\s*ema|200\s*-?\s*(period )?moving average|with the trend|trend filter/i.test(t)) r.trendFilter = 'ema200';
+  if (/london and new york|london\/new york|london & new york|ny and london|killzones?|kill zones?/i.test(t)) r.session = 'london_ny';
+  else if (/london session|during london|london open/i.test(t) && r.entry.kind !== 'london') r.session = 'london';
+  else if (/new york session|during new york|ny session|new york open/i.test(t)) r.session = 'newyork';
 
   const sl = t.match(/stop[- ]?loss(?: of| at| is|:)?\s*(\d+(?:\.\d+)?)\s*pips?/i) || t.match(/(\d+(?:\.\d+)?)\s*pips?\s*stop/i) || t.match(/\bsl\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
   if (sl) { r.stopLossPips = +sl[1]; understood.push('stop loss'); } else questions.push('How many pips for the stop loss?');
   const tp = t.match(/take[- ]?profit(?: of| at| is|:)?\s*(\d+(?:\.\d+)?)\s*pips?/i) || t.match(/(\d+(?:\.\d+)?)\s*pips?\s*(?:take[- ]?profit|target|profit)/i) || t.match(/\btp\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
-  if (tp) { r.takeProfitPips = +tp[1]; understood.push('take profit'); } else questions.push('How many pips for the take profit?');
+  const rr = t.match(/\b1\s*:\s*(\d+(?:\.\d+)?)\b/);
+  if (tp) { r.takeProfitPips = +tp[1]; understood.push('take profit'); }
+  else if (rr && sl) { r.takeProfitPips = +sl[1] * +rr[1]; understood.push('take profit'); }
+  else questions.push('How many pips for the take profit?');
   const risk = t.match(/risk(?:ing)?\s*(\d+(?:\.\d+)?)\s*%/i) || t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:risk|per trade)/i);
   if (risk) { r.riskPercent = +risk[1]; understood.push('risk'); } else questions.push('How much of your account should it risk per trade? (most traders use 1%)');
   const mx = t.match(/(?:max(?:imum)?|no more than|up to)\s*(\d+)\s*trades?/i);
@@ -159,28 +258,38 @@ export function parseStrategy(text: string): { rules: Rules; understood: string[
 }
 
 export function describeRules(r: Rules) {
-  const e = r.entry;
-  let buy = '';
-  let sell = '';
-  if (e.kind === 'ema_cross' || e.kind === 'sma_cross') {
-    const n = e.kind === 'ema_cross' ? 'EMA' : 'SMA';
-    buy = `${e.fast} ${n} crosses above ${e.slow} ${n}`;
-    sell = `${e.fast} ${n} crosses below ${e.slow} ${n}`;
-  } else if (e.kind === 'rsi') {
-    buy = `RSI(${e.period}) crosses back above ${e.lower}`;
-    sell = `RSI(${e.period}) crosses back below ${e.upper}`;
-  } else if (e.kind === 'macd_cross') {
-    buy = 'MACD (12, 26, 9) crosses above its signal line';
-    sell = 'MACD (12, 26, 9) crosses below its signal line';
-  } else {
-    buy = `Candle closes above the ${e.lookback}-candle high`;
-    sell = `Candle closes below the ${e.lookback}-candle low`;
-  }
-  const tfName = { H1: '1-hour', H4: '4-hour', D1: 'daily' }[r.timeframe];
+  const p = fullParams(r.entry);
+  const trig = (k: EntryKind, side: 'buy' | 'sell') => {
+    const up = side === 'buy';
+    switch (k) {
+      case 'ema_cross': case 'sma_cross': { const n = k === 'ema_cross' ? 'EMA' : 'SMA'; return `${p.fast} ${n} crosses ${up ? 'above' : 'below'} ${p.slow} ${n}`; }
+      case 'rsi': return up ? `RSI(${p.period}) crosses back above ${p.lower}` : `RSI(${p.period}) crosses back below ${p.upper}`;
+      case 'macd_cross': return `MACD (12, 26, 9) crosses ${up ? 'above' : 'below'} its signal line`;
+      case 'breakout': return up ? `Candle closes above the ${p.lookback}-candle high` : `Candle closes below the ${p.lookback}-candle low`;
+      case 'bb': return `Closes back inside the ${up ? 'lower' : 'upper'} Bollinger Band (${p.bbPeriod}, ${p.bbDev})`;
+      case 'stoch': return `Stochastic (${p.stochK}, ${p.stochD}, ${p.stochSmooth}) crosses ${up ? 'up from below 20' : 'down from above 80'}`;
+      case 'supertrend': return `Supertrend (${p.stLen}, ${p.stMult}) flips ${up ? 'up' : 'down'}`;
+      case 'pullback': return `${up ? 'Above' : 'Below'} the ${p.trendLen} EMA, price pulls back to the ${p.emaLen} EMA and closes ${up ? 'higher' : 'lower'}`;
+      case 'sd': return `Price returns to a fresh ${up ? 'demand' : 'supply'} zone`;
+      case 'sr': return `Price tests ${up ? 'support' : 'resistance'} that held at least twice`;
+      case 'candles': return up ? 'Bullish engulfing, hammer or morning star' : 'Bearish engulfing, shooting star or evening star';
+      case 'fvg': return `Price trades back into an unfilled ${up ? 'bullish' : 'bearish'} fair value gap`;
+      case 'ob': return `Price returns to a ${up ? 'bullish' : 'bearish'} order block`;
+      case 'bos': return `Close breaks the last swing ${up ? 'high' : 'low'} (BOS / CHoCH)`;
+      case 'liq': return `Price sweeps an old ${up ? 'low' : 'high'} and closes back ${up ? 'above' : 'below'} it`;
+      case 'ote': return `Price pulls back 62–79% of the last ${up ? 'up' : 'down'}-leg`;
+      case 'ibb': return `Close breaks ${up ? 'above' : 'below'} an inside-bar pattern`;
+      case 'london': return `In the London morning, close breaks ${up ? 'above the Asian high' : 'below the Asian low'}`;
+    }
+  };
+  const conf = r.confirm ? ` · only if ${ENTRY_LABEL[r.confirm.kind].toLowerCase()} happened in the same direction within the last ${r.confirm.within} candles` : '';
+  const filters = [r.trendFilter === 'ema200' ? 'Only with the 200 EMA trend' : '', r.session !== 'any' ? `Only during ${{ london: 'the London session (07:00–16:00 UTC)', newyork: 'the New York session (12:00–21:00 UTC)', london_ny: 'London and New York (07:00–21:00 UTC)' }[r.session]}` : ''].filter(Boolean).join(' · ');
   return [
-    { k: 'Market', v: `${r.symbol}, ${tfName} chart` },
-    ...(r.direction !== 'short' ? [{ k: 'Buy when', v: buy }] : []),
-    ...(r.direction !== 'long' ? [{ k: 'Sell when', v: sell }] : []),
+    { k: 'Market', v: `${r.symbol}, ${TIMEFRAME_LABEL[r.timeframe]} chart` },
+    { k: 'Strategy', v: ENTRY_LABEL[r.entry.kind] + (r.confirm ? ` + ${ENTRY_LABEL[r.confirm.kind]}` : '') },
+    ...(r.direction !== 'short' ? [{ k: 'Buy when', v: trig(r.entry.kind, 'buy') + conf }] : []),
+    ...(r.direction !== 'long' ? [{ k: 'Sell when', v: trig(r.entry.kind, 'sell') + conf }] : []),
+    ...(filters ? [{ k: 'Filters', v: filters }] : []),
     { k: 'Stop loss', v: `${r.stopLossPips} pips` },
     { k: 'Take profit', v: `${r.takeProfitPips} pips` },
     { k: 'Risk', v: `${r.riskPercent}% per trade` },
@@ -188,294 +297,75 @@ export function describeRules(r: Rules) {
   ];
 }
 
-/** Signal on CLOSED candle i: 1 buy, -1 sell, 0 nothing. Precomputes series once. */
-export function signalSeries(r: Rules, c: Candle[]): number[] {
+// ---------- Signals (used by the backtest and by "My strategy" in the scanner) ----------
+
+function kindSeries(kind: EntryKind, p: Required<Params>, c: Candle[], ctx: Ctx | null): number[] {
   const closes = c.map((x) => x.c);
   const out = new Array(c.length).fill(0);
-  const e = r.entry;
-  if (e.kind === 'ema_cross' || e.kind === 'sma_cross') {
-    const f = e.kind === 'ema_cross' ? ema(closes, e.fast!) : sma(closes, e.fast!);
-    const s = e.kind === 'ema_cross' ? ema(closes, e.slow!) : sma(closes, e.slow!);
-    for (let i = 1; i < c.length; i++) {
-      if (f[i - 1] <= s[i - 1] && f[i] > s[i]) out[i] = 1;
-      else if (f[i - 1] >= s[i - 1] && f[i] < s[i]) out[i] = -1;
-    }
-  } else if (e.kind === 'rsi') {
-    const v = rsi(closes, e.period!);
-    for (let i = 1; i < c.length; i++) {
-      if (v[i - 1] < e.lower! && v[i] >= e.lower!) out[i] = 1;
-      else if (v[i - 1] > e.upper! && v[i] <= e.upper!) out[i] = -1;
-    }
-  } else if (e.kind === 'macd_cross') {
-    const m = macd(closes);
-    for (let i = 1; i < c.length; i++) {
-      if (m.line[i - 1] <= m.signal[i - 1] && m.line[i] > m.signal[i]) out[i] = 1;
-      else if (m.line[i - 1] >= m.signal[i - 1] && m.line[i] < m.signal[i]) out[i] = -1;
-    }
-  } else {
-    const n = e.lookback!;
-    for (let i = n; i < c.length; i++) {
-      if (c[i].c > highest(c, i - n, i - 1)) out[i] = 1;
-      else if (c[i].c < lowest(c, i - n, i - 1)) out[i] = -1;
-    }
+  const crossed = (f: number[], s: number[], i: number) => (f[i - 1] <= s[i - 1] && f[i] > s[i] ? 1 : f[i - 1] >= s[i - 1] && f[i] < s[i] ? -1 : 0);
+  if (kind === 'ema_cross' || kind === 'sma_cross') {
+    const f = kind === 'ema_cross' ? ema(closes, p.fast) : sma(closes, p.fast);
+    const s = kind === 'ema_cross' ? ema(closes, p.slow) : sma(closes, p.slow);
+    for (let i = 1; i < c.length; i++) out[i] = crossed(f, s, i);
+    return out;
   }
-  if (r.direction === 'long') return out.map((v) => (v === 1 ? 1 : 0));
-  if (r.direction === 'short') return out.map((v) => (v === -1 ? -1 : 0));
+  if (kind === 'rsi') {
+    const v = rsi(closes, p.period);
+    for (let i = 1; i < c.length; i++) out[i] = v[i - 1] < p.lower && v[i] >= p.lower ? 1 : v[i - 1] > p.upper && v[i] <= p.upper ? -1 : 0;
+    return out;
+  }
+  if (kind === 'macd_cross') {
+    const m = macd(closes);
+    for (let i = 1; i < c.length; i++) out[i] = crossed(m.line, m.signal, i);
+    return out;
+  }
+  if (kind === 'breakout') {
+    for (let i = p.lookback; i < c.length; i++) out[i] = c[i].c > highest(c, i - p.lookback, i - 1) ? 1 : c[i].c < lowest(c, i - p.lookback, i - 1) ? -1 : 0;
+    return out;
+  }
+  if (!ctx) return out;
+  for (let i = 80; i < c.length; i++) {
+    const x = at(ctx, i);
+    let s = null;
+    if (kind === 'bb') s = bollingerBounce(x, p.bbPeriod, p.bbDev);
+    else if (kind === 'stoch') s = stochCross(x, p.stochK, p.stochD, p.stochSmooth);
+    else if (kind === 'supertrend') s = supertrendFlip(x, p.stLen, p.stMult);
+    else if (kind === 'pullback') s = trendPullback(x, p.trendLen, p.emaLen);
+    else s = DETECTORS[kind]?.(x) || null;
+    if (s) out[i] = s.direction === 'Bullish' ? 1 : -1;
+  }
   return out;
 }
 
-// ---------- Code generation ----------
-
-const tfMql = { H1: 'PERIOD_H1', H4: 'PERIOD_H4', D1: 'PERIOD_D1' } as const;
-
-export function toMql5(r: Rules) {
-  const e = r.entry;
-  let handles = '';
-  let init = '';
-  let signal = '';
-  let release = '';
-  if (e.kind === 'ema_cross' || e.kind === 'sma_cross') {
-    const mode = e.kind === 'ema_cross' ? 'MODE_EMA' : 'MODE_SMA';
-    handles = 'int hFast = INVALID_HANDLE, hSlow = INVALID_HANDLE;';
-    init = `   hFast = iMA(_Symbol, TF, FastPeriod, 0, ${mode}, PRICE_CLOSE);
-   hSlow = iMA(_Symbol, TF, SlowPeriod, 0, ${mode}, PRICE_CLOSE);
-   if(hFast == INVALID_HANDLE || hSlow == INVALID_HANDLE) return INIT_FAILED;`;
-    release = '   IndicatorRelease(hFast);\n   IndicatorRelease(hSlow);';
-    signal = `   double f[], s[];
-   ArraySetAsSeries(f, true); ArraySetAsSeries(s, true);
-   if(CopyBuffer(hFast, 0, 1, 2, f) < 2 || CopyBuffer(hSlow, 0, 1, 2, s) < 2) return 0;
-   if(f[1] <= s[1] && f[0] > s[0]) return 1;
-   if(f[1] >= s[1] && f[0] < s[0]) return -1;
-   return 0;`;
-  } else if (e.kind === 'rsi') {
-    handles = 'int hRsi = INVALID_HANDLE;';
-    init = `   hRsi = iRSI(_Symbol, TF, RsiPeriod, PRICE_CLOSE);
-   if(hRsi == INVALID_HANDLE) return INIT_FAILED;`;
-    release = '   IndicatorRelease(hRsi);';
-    signal = `   double v[];
-   ArraySetAsSeries(v, true);
-   if(CopyBuffer(hRsi, 0, 1, 2, v) < 2) return 0;
-   if(v[1] < RsiLower && v[0] >= RsiLower) return 1;
-   if(v[1] > RsiUpper && v[0] <= RsiUpper) return -1;
-   return 0;`;
-  } else if (e.kind === 'macd_cross') {
-    handles = 'int hMacd = INVALID_HANDLE;';
-    init = `   hMacd = iMACD(_Symbol, TF, 12, 26, 9, PRICE_CLOSE);
-   if(hMacd == INVALID_HANDLE) return INIT_FAILED;`;
-    release = '   IndicatorRelease(hMacd);';
-    signal = `   double m[], sg[];
-   ArraySetAsSeries(m, true); ArraySetAsSeries(sg, true);
-   if(CopyBuffer(hMacd, 0, 1, 2, m) < 2 || CopyBuffer(hMacd, 1, 1, 2, sg) < 2) return 0;
-   if(m[1] <= sg[1] && m[0] > sg[0]) return 1;
-   if(m[1] >= sg[1] && m[0] < sg[0]) return -1;
-   return 0;`;
-  } else {
-    handles = '';
-    init = '';
-    signal = `   int hiIdx = iHighest(_Symbol, TF, MODE_HIGH, Lookback, 2);
-   int loIdx = iLowest(_Symbol, TF, MODE_LOW, Lookback, 2);
-   if(hiIdx < 0 || loIdx < 0) return 0;
-   double hi = iHigh(_Symbol, TF, hiIdx), lo = iLow(_Symbol, TF, loIdx);
-   double c1 = iClose(_Symbol, TF, 1);
-   if(c1 > hi) return 1;
-   if(c1 < lo) return -1;
-   return 0;`;
-  }
-  const inputs = [
-    e.kind === 'ema_cross' || e.kind === 'sma_cross' ? `input int    FastPeriod = ${e.fast};          // Fast moving average\ninput int    SlowPeriod = ${e.slow};          // Slow moving average` : '',
-    e.kind === 'rsi' ? `input int    RsiPeriod = ${e.period};\ninput double RsiLower = ${e.lower};\ninput double RsiUpper = ${e.upper};` : '',
-    e.kind === 'breakout' ? `input int    Lookback = ${e.lookback};             // Candles for the high/low` : '',
-  ].filter(Boolean).join('\n');
-  const allowBuy = r.direction !== 'short';
-  const allowSell = r.direction !== 'long';
-  return `//+------------------------------------------------------------------+
-//| ${r.name.replace(/[^\w\s-]/g, '')} - generated by MarkIQ SI Bot Builder
-//| Market: ${r.symbol}  Timeframe: ${r.timeframe}
-//| ALWAYS test this on a demo account first. Trading risks real money.
-//| This bot never needs your password: it runs inside your own MT5.
-//+------------------------------------------------------------------+
-#property copyright "Built with MarkIQ SI"
-#property version   "1.00"
-#include <Trade/Trade.mqh>
-
-input ENUM_TIMEFRAMES TF = ${tfMql[r.timeframe]};
-${inputs}
-input double RiskPercent = ${r.riskPercent};          // % of equity risked per trade
-input double StopLossPips = ${r.stopLossPips};
-input double TakeProfitPips = ${r.takeProfitPips};
-input int    MaxTradesPerDay = ${r.maxTradesPerDay};
-input double DailyLossLimitPercent = ${r.dailyLossPercent}; // stop trading for the day after this loss
-input bool   AllowBuy = ${allowBuy};
-input bool   AllowSell = ${allowSell};
-input double PipSizeOverride = 0;       // leave 0 for automatic
-input ulong  MagicNumber = 77010;
-
-CTrade trade;
-${handles}
-datetime lastBar = 0;
-datetime dayStart = 0;
-double   dayStartEquity = 0;
-
-double Pip()
-{
-   if(PipSizeOverride > 0) return PipSizeOverride;
-   if(_Digits == 3 || _Digits == 5) return _Point * 10;
-   if(_Digits == 2 && StringFind(_Symbol, "XAU") >= 0) return _Point * 10;
-   return _Point;
+/** Signal on CLOSED candle i: 1 buy, -1 sell, 0 nothing. */
+export function signalSeries(r: Rules, c: Candle[]): number[] {
+  const p = fullParams(r.entry);
+  const ctx = makeCtx(c, 5);
+  const main = kindSeries(r.entry.kind, p, c, ctx);
+  const conf = r.confirm ? kindSeries(r.confirm.kind, p, c, ctx) : null;
+  const e200 = r.trendFilter === 'ema200' ? ema(c.map((x) => x.c), 200) : null;
+  const win = { london: [7, 16], newyork: [12, 21], london_ny: [7, 21], any: [0, 24] }[r.session];
+  return main.map((s, i) => {
+    if (!s) return 0;
+    if (r.direction === 'long' && s < 0) return 0;
+    if (r.direction === 'short' && s > 0) return 0;
+    if (conf) {
+      let ok = false;
+      for (let k = Math.max(0, i - r.confirm!.within); k <= i; k++) if (conf[k] === s) { ok = true; break; }
+      if (!ok) return 0;
+    }
+    if (e200) {
+      if (!(e200[i] > 0)) return 0;
+      if (s > 0 && !(c[i].c > e200[i])) return 0;
+      if (s < 0 && !(c[i].c < e200[i])) return 0;
+    }
+    if (r.session !== 'any') {
+      const h = new Date(c[i].t).getUTCHours();
+      if (h < win[0] || h >= win[1]) return 0;
+    }
+    return s;
+  });
 }
 
-int OnInit()
-{
-   trade.SetExpertMagicNumber(MagicNumber);
-${init}
-   return INIT_SUCCEEDED;
-}
-
-void OnDeinit(const int reason)
-{
-${release}
-}
-
-int Signal()
-{
-${signal}
-}
-
-bool HasPosition()
-{
-   for(int i = PositionsTotal() - 1; i >= 0; i--)
-   {
-      ulong t = PositionGetTicket(i);
-      if(t > 0 && PositionGetString(POSITION_SYMBOL) == _Symbol && PositionGetInteger(POSITION_MAGIC) == (long)MagicNumber) return true;
-   }
-   return false;
-}
-
-int TradesToday()
-{
-   if(!HistorySelect(dayStart, TimeCurrent())) return 0;
-   int n = 0;
-   for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
-   {
-      ulong d = HistoryDealGetTicket(i);
-      if(d > 0 && HistoryDealGetInteger(d, DEAL_MAGIC) == (long)MagicNumber && HistoryDealGetInteger(d, DEAL_ENTRY) == DEAL_ENTRY_IN) n++;
-   }
-   return n;
-}
-
-double LotsForRisk(double slDistance)
-{
-   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   if(tickValue <= 0 || tickSize <= 0 || slDistance <= 0) return 0;
-   double riskMoney = AccountInfoDouble(ACCOUNT_EQUITY) * RiskPercent / 100.0;
-   double lossPerLot = slDistance / tickSize * tickValue;
-   double lots = riskMoney / lossPerLot;
-   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   double minL = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double maxL = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   lots = MathFloor(lots / step) * step;
-   if(lots < minL) return 0;            // trade would risk more than allowed, so skip it
-   return MathMin(lots, maxL);
-}
-
-void OnTick()
-{
-   MqlDateTime now; TimeToStruct(TimeCurrent(), now);
-   now.hour = 0; now.min = 0; now.sec = 0;
-   datetime today = StructToTime(now);
-   if(today != dayStart) { dayStart = today; dayStartEquity = AccountInfoDouble(ACCOUNT_EQUITY); }
-
-   datetime bar = iTime(_Symbol, TF, 0);
-   if(bar == lastBar) return;          // act once per new candle
-   lastBar = bar;
-
-   if(AccountInfoDouble(ACCOUNT_EQUITY) <= dayStartEquity * (1.0 - DailyLossLimitPercent / 100.0)) return;
-   if(HasPosition()) return;           // one trade at a time
-   if(TradesToday() >= MaxTradesPerDay) return;
-
-   int sig = Signal();
-   double pip = Pip();
-   double sl = StopLossPips * pip, tp = TakeProfitPips * pip;
-   double lots = LotsForRisk(sl);
-   if(lots <= 0) return;
-
-   if(sig == 1 && AllowBuy)
-   {
-      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      trade.Buy(lots, _Symbol, ask, NormalizeDouble(ask - sl, _Digits), NormalizeDouble(ask + tp, _Digits), "MarkIQ SI");
-   }
-   else if(sig == -1 && AllowSell)
-   {
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      trade.Sell(lots, _Symbol, bid, NormalizeDouble(bid + sl, _Digits), NormalizeDouble(bid - tp, _Digits), "MarkIQ SI");
-   }
-}
-`;
-}
-
-export function toPine(r: Rules) {
-  const e = r.entry;
-  let calc = '';
-  if (e.kind === 'ema_cross' || e.kind === 'sma_cross') {
-    const fn = e.kind === 'ema_cross' ? 'ta.ema' : 'ta.sma';
-    calc = `fastLen = input.int(${e.fast}, "Fast length")
-slowLen = input.int(${e.slow}, "Slow length")
-fastMa = ${fn}(close, fastLen)
-slowMa = ${fn}(close, slowLen)
-plot(fastMa, "Fast", color.new(color.blue, 0))
-plot(slowMa, "Slow", color.new(color.orange, 0))
-buySignal = ta.crossover(fastMa, slowMa)
-sellSignal = ta.crossunder(fastMa, slowMa)`;
-  } else if (e.kind === 'rsi') {
-    calc = `rsiLen = input.int(${e.period}, "RSI length")
-lower = input.float(${e.lower}, "Oversold level")
-upper = input.float(${e.upper}, "Overbought level")
-r = ta.rsi(close, rsiLen)
-buySignal = ta.crossover(r, lower)
-sellSignal = ta.crossunder(r, upper)`;
-  } else if (e.kind === 'macd_cross') {
-    calc = `[macdLine, signalLine, hist] = ta.macd(close, 12, 26, 9)
-buySignal = ta.crossover(macdLine, signalLine)
-sellSignal = ta.crossunder(macdLine, signalLine)`;
-  } else {
-    calc = `lookback = input.int(${e.lookback}, "Breakout candles")
-buySignal = close > ta.highest(high, lookback)[1]
-sellSignal = close < ta.lowest(low, lookback)[1]`;
-  }
-  return `//@version=6
-// ${r.name.replace(/[^\w\s-]/g, '')} - generated by MarkIQ SI Bot Builder
-// Use on the ${r.symbol} ${r.timeframe === 'H1' ? '1-hour' : r.timeframe === 'H4' ? '4-hour' : 'daily'} chart. Results on past data never guarantee future results.
-strategy("${r.name.replace(/"/g, '')} (MarkIQ SI)", overlay = true, initial_capital = 10000, commission_type = strategy.commission.percent, commission_value = 0.0, slippage = 1, process_orders_on_close = false)
-
-riskPct = input.float(${r.riskPercent}, "Risk % per trade", minval = 0.1, maxval = 10)
-slPips = input.float(${r.stopLossPips}, "Stop loss (pips)")
-tpPips = input.float(${r.takeProfitPips}, "Take profit (pips)")
-allowBuy = input.bool(${r.direction !== 'short'}, "Allow buys")
-allowSell = input.bool(${r.direction !== 'long'}, "Allow sells")
-maxTradesPerDay = input.int(${r.maxTradesPerDay}, "Max trades per day")
-pipSize = syminfo.type == "forex" ? syminfo.mintick * 10 : syminfo.mintick
-
-${calc}
-
-// Position size from risk: lose about riskPct of equity if the stop is hit
-slDistance = slPips * pipSize
-qty = slDistance > 0 ? (strategy.equity * riskPct / 100) / (slDistance * syminfo.pointvalue) : 0
-
-var int tradesToday = 0
-if ta.change(time("D")) != 0
-    tradesToday := 0
-
-canTrade = strategy.position_size == 0 and tradesToday < maxTradesPerDay and qty > 0
-if buySignal and allowBuy and canTrade
-    strategy.entry("Buy", strategy.long, qty = qty)
-    tradesToday += 1
-if sellSignal and allowSell and canTrade
-    strategy.entry("Sell", strategy.short, qty = qty)
-    tradesToday += 1
-
-ticks = pipSize / syminfo.mintick
-strategy.exit("Buy exit", from_entry = "Buy", loss = slPips * ticks, profit = tpPips * ticks)
-strategy.exit("Sell exit", from_entry = "Sell", loss = slPips * ticks, profit = tpPips * ticks)
-`;
-}
+export { toMql5 } from './codegen-mql5';
+export { toPine } from './codegen-pine';

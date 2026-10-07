@@ -27,12 +27,24 @@ export const SYMBOLS: Sym[] = [
 
 export const GROUPS: Group[] = ['Forex', 'Gold & Oil', 'Indices', 'Crypto'];
 
-export type TF = '1h' | '4h' | '1day';
-export const TIMEFRAMES: { key: TF; label: string; minutes: number; refreshMinutes: number }[] = [
-  { key: '1h', label: '1H', minutes: 60, refreshMinutes: 60 },
-  { key: '4h', label: '4H', minutes: 240, refreshMinutes: 240 },
-  { key: '1day', label: 'Daily', minutes: 1440, refreshMinutes: 720 },
+export type TF = '1min' | '5min' | '15min' | '30min' | '1h' | '4h' | '1day' | '1week' | '1month';
+/**
+ * background: refreshed automatically for every market. The fast timeframes (1m–30m) use a lot of
+ * price-data credits, so on the free data plan they are refreshed only when someone scans them
+ * (or for every market if SCANNER_FAST=on and your data plan allows it).
+ */
+export const TIMEFRAMES: { key: TF; label: string; minutes: number; refreshMinutes: number; background: boolean; higher: TF | null }[] = [
+  { key: '1min', label: '1m', minutes: 1, refreshMinutes: 1, background: false, higher: '15min' },
+  { key: '5min', label: '5m', minutes: 5, refreshMinutes: 5, background: false, higher: '1h' },
+  { key: '15min', label: '15m', minutes: 15, refreshMinutes: 15, background: false, higher: '1h' },
+  { key: '30min', label: '30m', minutes: 30, refreshMinutes: 30, background: false, higher: '4h' },
+  { key: '1h', label: '1H', minutes: 60, refreshMinutes: 60, background: true, higher: '4h' },
+  { key: '4h', label: '4H', minutes: 240, refreshMinutes: 240, background: true, higher: '1day' },
+  { key: '1day', label: 'Daily', minutes: 1440, refreshMinutes: 720, background: true, higher: '1week' },
+  { key: '1week', label: 'Weekly', minutes: 10080, refreshMinutes: 1440, background: true, higher: '1month' },
+  { key: '1month', label: 'Monthly', minutes: 43200, refreshMinutes: 4320, background: true, higher: null },
 ];
+export const TF_KEYS = TIMEFRAMES.map((t) => t.key);
 
 export function findSymbol(key: string) {
   const k = key.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -52,4 +64,10 @@ export const STRATEGIES: { key: string; group: string; label: string; desc: stri
   { key: 'rsi', group: 'Classic indicators', label: 'RSI overbought / oversold', desc: 'RSI above 70 or below 30.' },
   { key: 'brk', group: 'Classic indicators', label: 'Breakout', desc: 'Price breaks its 20-bar high or low.' },
   { key: 'macd', group: 'Classic indicators', label: 'MACD cross', desc: 'The MACD line crosses its signal line.' },
+  { key: 'ibb', group: 'Price action', label: 'Inside bar breakout', desc: 'Price breaks out of an inside-bar pattern.' },
+  { key: 'london', group: 'ICT & SMC', label: 'London breakout', desc: 'Break of the Asian range in the London morning (intraday charts).' },
+  { key: 'pullback', group: 'Classic indicators', label: 'Trend pullback (200 / 20 EMA)', desc: 'With the 200 EMA trend, price pulls back to the 20 EMA.' },
+  { key: 'bb', group: 'Classic indicators', label: 'Bollinger Band bounce', desc: 'Price closes back inside the bands.' },
+  { key: 'stoch', group: 'Classic indicators', label: 'Stochastic cross', desc: 'Crosses up from oversold or down from overbought.' },
+  { key: 'supertrend', group: 'Classic indicators', label: 'Supertrend flip', desc: 'Supertrend (10, 3) changes direction.' },
 ];

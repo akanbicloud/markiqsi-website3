@@ -106,11 +106,13 @@ test('fair value gap is detected when price returns into it', () => {
   assert.ok(r && r.direction === 'Bullish', JSON.stringify(r));
 });
 
-test('parser reads a typical strategy', () => {
+test('parser reads a typical strategy (legacy)', () => {
   const p = parseStrategy('Buy EURUSD when the 20 EMA crosses above the 50 EMA on the 1-hour chart, and sell when it crosses below. Stop loss 20 pips, take profit 40 pips. Risk 1% per trade.');
   assert.equal(p.rules.symbol, 'EURUSD');
   assert.equal(p.rules.timeframe, 'H1');
-  assert.deepEqual(p.rules.entry, { kind: 'ema_cross', fast: 20, slow: 50 });
+  assert.equal(p.rules.entry.kind, 'ema_cross');
+  assert.equal(p.rules.entry.fast, 20);
+  assert.equal(p.rules.entry.slow, 50);
   assert.equal(p.rules.direction, 'both');
   assert.equal(p.rules.stopLossPips, 20);
   assert.equal(p.rules.takeProfitPips, 40);
@@ -138,10 +140,10 @@ test('code generators produce complete code', () => {
   for (const kind of ['ema_cross', 'sma_cross', 'rsi', 'macd_cross', 'breakout'] as const) {
     const r = sanitizeRules({ entry: { kind } });
     const m = toMql5(r);
-    assert.ok(m.includes('int Signal()') && m.includes('trade.Buy') && m.includes('OnTick'));
+    assert.ok(m.includes('int SignalNow()') && m.includes('trade.Buy') && m.includes('OnTick'));
     assert.equal((m.match(/\{/g) || []).length, (m.match(/\}/g) || []).length, 'balanced braces in MQL5 ' + kind);
     const pine = toPine(r);
-    assert.ok(pine.startsWith('//@version=6') && pine.includes('strategy.entry') && pine.includes('buySignal'));
+    assert.ok(pine.startsWith('//@version=6') && pine.includes('strategy.entry') && pine.includes('finalSig'));
   }
 });
 

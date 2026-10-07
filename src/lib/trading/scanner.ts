@@ -2,7 +2,8 @@ import { db } from '../db';
 import { esc, sendTelegram } from '../telegram';
 import { runAll } from './detect';
 import { closedOnly, digitsFor } from './prices';
-import { SYMBOLS, STRATEGIES, TIMEFRAMES, findSymbol, type TF } from './symbols';
+import { SYMBOLS, STRATEGIES, TIMEFRAMES, TF_KEYS, findSymbol, type TF } from './symbols';
+import { ema } from './indicators';
 import type { Candle } from './indicators';
 import { sanitizeRules, signalSeries } from './botspec';
 
@@ -10,10 +11,12 @@ export type ScanRow = { setup_key: string; symbol: string; timeframe: string; st
 
 const tfLabel = (tf: string) => TIMEFRAMES.find((t) => t.key === tf)?.label || tf;
 
-/** Runs every detector on every cached series and stores new setups. */
-export async function scanAll() {
+/** Runs every detector on cached series (all, or only some) and stores new setups. */
+export async function scanAll(only?: { symbols: string[]; tfs: string[] }) {
   const q = await db();
-  const rows = (await q`SELECT symbol, timeframe, candles FROM mq_price_cache WHERE timeframe IN ('1h','4h','1day') AND error IS NULL`) as { symbol: string; timeframe: TF; candles: Candle[] }[];
+  const rows = (only
+    ? await q`SELECT symbol, timeframe, candles FROM mq_price_cache WHERE timeframe = ANY(${only.tfs}) AND symbol = ANY(${only.symbols}) AND error IS NULL`
+    : await q`SELECT symbol, timeframe, candles FROM mq_price_cache WHERE timeframe = ANY(${TF_KEYS}) AND error IS NULL AND fetched_at > now() - interval '3 days'`) as { symbol: string; timeframe: TF; candles: Candle[] }[];
   let found = 0;
   for (const r of rows) {
     const sym = findSymbol(r.symbol);
@@ -43,7 +46,8 @@ export async function currentSetups(): Promise<ScanRow[]> {
     WHERE r.found_at > now() - interval '3 days'
     ORDER BY r.strength DESC, r.found_at DESC LIMIT 400`) as ScanRow[];
   // keep only setups from the newest closed candle of each series
-  const ages: Record<string, number> = { '1h': 3, '4h': 10, '1day': 50 };
+  // a setup stays "current" until its candle is a couple of candles old
+  const ages: Record<string, number> = { '1min': 0.06, '5min': 0.25, '15min': 0.75, '30min': 1.5, '1h': 3, '4h': 10, '1day': 80, '1week': 400, '1month': 1700 };
   return rows
     .map((r) => ({ ...r, bar_time: new Date(r.bar_time).toISOString(), found_at: new Date(r.found_at).toISOString() }))
     .filter((r) => Date.now() - new Date(r.bar_time).getTime() < (ages[r.timeframe] || 3) * 3600000);
@@ -70,7 +74,24 @@ export async function scanMine(rulesRaw: unknown, timeframes: string[]) {
   return out;
 }
 
-type Context = { news: Map<string, string>; bias: Map<string, string> };
+type Context = { news: Map<string, string>; bias: Map<string, string>; trend: Map<string, number> };
+
+/** Trend of every cached series (20 EMA vs 50 EMA), used to confirm setups with a higher timeframe. */
+async function trends() {
+  const q = await db();
+  const rows = (await q`SELECT symbol, timeframe, candles FROM mq_price_cache WHERE error IS NULL AND timeframe = ANY(${TF_KEYS})`) as { symbol: string; timeframe: TF; candles: Candle[] }[];
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    const c = closedOnly(r.candles || [], r.timeframe);
+    if (c.length < 60) continue;
+    const cl = c.map((x) => x.c);
+    const L = cl.length - 1;
+    const e20 = ema(cl, 20)[L];
+    const e50 = ema(cl, 50)[L];
+    m.set(`${r.symbol}|${r.timeframe}`, e20 > e50 && cl[L] > e50 ? 1 : e20 < e50 && cl[L] < e50 ? -1 : 0);
+  }
+  return m;
+}
 
 export async function fundamentalsContext(): Promise<Context> {
   const q = await db();
@@ -98,14 +119,20 @@ export async function fundamentalsContext(): Promise<Context> {
     if (Math.abs(ra - rb) < 0.25) bias.set(s.key, `${a} and ${b} interest rates are close (${ra}% vs ${rb}%).`);
     else bias.set(s.key, `${ra > rb ? a : b} has the higher interest rate (${ra}% vs ${rb}%), which tends to support it.`);
   }
-  return { news, bias };
+  return { news, bias, trend: await trends() };
 }
 
 export function enrich(rows: ScanRow[], ctx: Context) {
   return rows.map((r) => {
     const sym = findSymbol(r.symbol);
     const newsAhead = (sym?.currencies || []).map((c) => ctx.news.get(c)).filter(Boolean)[0] || '';
+    const htf = TIMEFRAMES.find((t) => t.key === r.timeframe)?.higher || null;
+    const ht = htf ? ctx.trend.get(`${r.symbol}|${htf}`) : undefined;
+    const dir = r.direction === 'Bullish' ? 1 : -1;
     return {
+      htfLabel: htf ? tfLabel(htf) : '',
+      htfTrend: ht === undefined ? 'unknown' : ht === 1 ? 'up' : ht === -1 ? 'down' : 'flat',
+      htfAgrees: ht !== undefined && ht === dir,
       ...r,
       label: sym?.label || r.symbol,
       group: sym?.group || '',

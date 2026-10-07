@@ -4,15 +4,33 @@ import { SYMBOLS, TIMEFRAMES, type Sym, type TF } from './symbols';
 
 type Cached = { symbol: string; timeframe: string; candles: Candle[]; fetched_at: string; error: string | null };
 
-async function fetchTwelve(sym: Sym, tf: TF, size: number): Promise<Candle[]> {
+/** Counts price-data requests so we never go over the plan's per-minute and per-day limits. */
+export async function takeCredit() {
+  const perMin = Number(process.env.TWELVE_DATA_PER_MINUTE || 8);
+  const perDay = Number(process.env.TWELVE_DATA_PER_DAY || 800);
+  const q = await db();
+  const now = new Date();
+  const minute = 'm' + now.toISOString().slice(0, 16);
+  const day = 'd' + now.toISOString().slice(0, 10);
+  const rows = (await q`INSERT INTO mq_rate (bucket, count) VALUES (${minute}, 1), (${day}, 1)
+    ON CONFLICT (bucket) DO UPDATE SET count = mq_rate.count + 1 RETURNING bucket, count`) as { bucket: string; count: number }[];
+  const m = rows.find((r) => r.bucket === minute)?.count || 0;
+  const d = rows.find((r) => r.bucket === day)?.count || 0;
+  if (m > perMin || d > perDay) throw new Error('Price data credits used up for now (limit reached). Try again in a minute.');
+  if (Math.random() < 0.02) await q`DELETE FROM mq_rate WHERE bucket < ${'m' + new Date(Date.now() - 3600000).toISOString().slice(0, 16)} AND bucket LIKE 'm%'`;
+}
+
+export async function fetchTwelve(sym: Sym, tf: TF, size: number, endDate?: string): Promise<Candle[]> {
   const key = process.env.TWELVE_DATA_API_KEY;
   if (!key) throw new Error('TWELVE_DATA_API_KEY is not set');
+  await takeCredit();
   const u = new URL('https://api.twelvedata.com/time_series');
   u.searchParams.set('symbol', sym.td);
   u.searchParams.set('interval', tf);
   u.searchParams.set('outputsize', String(size));
   u.searchParams.set('timezone', 'UTC');
   u.searchParams.set('order', 'ASC');
+  if (endDate) u.searchParams.set('end_date', endDate);
   u.searchParams.set('apikey', key);
   const r = await fetch(u, { signal: AbortSignal.timeout(20000), cache: 'no-store' });
   const d = await r.json();
@@ -24,9 +42,14 @@ async function fetchTwelve(sym: Sym, tf: TF, size: number): Promise<Candle[]> {
 
 /** Drops the candle that is still forming, so all signals use finished candles only. */
 export function closedOnly(c: Candle[], tf: TF, now = Date.now()) {
-  const mins = TIMEFRAMES.find((x) => x.key === tf)!.minutes;
-  if (c.length && c[c.length - 1].t + mins * 60000 > now) return c.slice(0, -1);
-  return c;
+  if (!c.length) return c;
+  const last = c[c.length - 1].t;
+  let end: number;
+  if (tf === '1month') {
+    const d = new Date(last);
+    end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  } else end = last + TIMEFRAMES.find((x) => x.key === tf)!.minutes * 60000;
+  return end > now ? c.slice(0, -1) : c;
 }
 
 export async function getCached(): Promise<Cached[]> {
@@ -39,24 +62,39 @@ export async function getCached(): Promise<Cached[]> {
  * Refreshes the oldest price series, at most `budget` per call, to stay inside the free
  * Twelve Data limit (8 requests a minute, 800 a day). Call it every 2 minutes.
  */
-export async function refreshPrices(budget = 7) {
+export async function refreshPrices(budget = 7, only?: { symbols: string[]; tfs: TF[] }) {
   const q = await db();
   const rows = (await q`SELECT symbol, timeframe, fetched_at FROM mq_price_cache`) as { symbol: string; timeframe: string; fetched_at: string }[];
   const last = new Map(rows.map((r) => [`${r.symbol}|${r.timeframe}`, new Date(r.fetched_at).getTime()]));
   const now = Date.now();
   const due: { sym: Sym; tf: TF; age: number }[] = [];
-  for (const tf of TIMEFRAMES) {
+  const fast = process.env.SCANNER_FAST === 'on';
+  for (const tf of TIMEFRAMES.filter((t) => t.background || fast)) {
     for (const sym of SYMBOLS) {
       const t = last.get(`${sym.key}|${tf.key}`);
       const age = t ? now - t : Infinity;
       if (age >= tf.refreshMinutes * 60000) due.push({ sym, tf: tf.key, age });
     }
   }
+  if (only) {
+    due.length = 0;
+    for (const tfk of only.tfs) {
+      const tf = TIMEFRAMES.find((t) => t.key === tfk);
+      if (!tf) continue;
+      for (const sk of only.symbols) {
+        const sym = SYMBOLS.find((x) => x.key === sk);
+        if (!sym) continue;
+        const t = last.get(`${sym.key}|${tf.key}`);
+        const age = t ? now - t : Infinity;
+        if (age >= tf.refreshMinutes * 60000) due.push({ sym, tf: tf.key, age });
+      }
+    }
+  }
   due.sort((a, b) => b.age - a.age);
   const done: string[] = [];
   for (const d of due.slice(0, budget)) {
     try {
-      const candles = await fetchTwelve(d.sym, d.tf, 300);
+      const candles = await fetchTwelve(d.sym, d.tf, 320);
       await q`INSERT INTO mq_price_cache (symbol, timeframe, candles, fetched_at, error) VALUES (${d.sym.key}, ${d.tf}, ${JSON.stringify(candles)}, now(), NULL)
         ON CONFLICT (symbol, timeframe) DO UPDATE SET candles = EXCLUDED.candles, fetched_at = now(), error = NULL`;
       done.push(`${d.sym.key} ${d.tf}`);

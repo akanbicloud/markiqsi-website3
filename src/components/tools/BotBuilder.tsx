@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { DEFAULT_RULES, ENTRY_LABEL, describeRules, sanitizeRules, toMql5, toPine, type EntryKind, type Rules } from '@/lib/trading/botspec';
+import { DEFAULT_RULES, ENTRY_GROUPS, ENTRY_LABEL, PRESETS, TIMEFRAME_LABEL, describeRules, sanitizeRules, type EntryKind, type Rules, type Timeframe } from '@/lib/trading/botspec';
+import { toMql5 } from '@/lib/trading/codegen-mql5';
+import { toPine } from '@/lib/trading/codegen-pine';
 
 type BT = { trades: number; wins: number; losses: number; winRate: number; netPips: number; profitFactor: number | null; maxDrawdownPct: number; startEquity: number; endEquity: number; returnPct: number; from: string; to: string; candles: number; equity: number[]; lastTrades: { time: string; side: string; result: string; pips: number }[]; assumptions: string[] };
 
-const EXAMPLE = 'Buy EURUSD when the 20 EMA crosses above the 50 EMA on the 1-hour chart, and sell when it crosses below. Stop loss 20 pips, take profit 40 pips. Risk 1% per trade.';
+const EXAMPLE = 'Trade EURUSD on the 15-minute chart. After a liquidity sweep, enter on the fair value gap, only during London and New York, and only with the 200 EMA trend. Stop loss 15 pips, take profit 30 pips. Risk 1% per trade.';
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
@@ -119,11 +121,24 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
         ))}
       </div>
 
+      <div className="stack" style={{ gap: 12 }}>
+        <span className="display" style={{ fontWeight: 700, fontSize: 24 }}>Start from a ready-made strategy</span>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 }}>
+          {PRESETS.map((p) => (
+            <button key={p.name} type="button" className="glass stack lift" style={{ gap: 6, textAlign: 'left', color: '#FFFFFF', cursor: 'pointer', padding: 18 }} onClick={() => { const r = sanitizeRules({ ...DEFAULT_RULES, ...p.rules, entry: { ...DEFAULT_RULES.entry, ...(p.rules.entry || {}) } as Rules['entry'] }); setRules(r); setQuestions([]); setBt(null); setMsg(''); setBotId(null); setText(`${p.name}: ${p.desc}`); }}>
+              <span className="display" style={{ fontWeight: 700, fontSize: 19 }}>{p.name}</span>
+              <span style={{ fontSize: 14, color: '#B9C9E6' }}>{p.desc}</span>
+            </button>
+          ))}
+        </div>
+        <span style={{ fontSize: 15, color: '#B9C9E6' }}>Or describe your own strategy below. You can mix them, for example “after a liquidity sweep, enter on the fair value gap in the London session, only with the 200 EMA trend”.</span>
+      </div>
+
       <div className="row" style={{ background: '#FFFFFF', color: '#0B1A36', borderRadius: 30, padding: 'clamp(22px, 3vw, 36px)', gap: 28 }}>
         <div className="stack" style={{ flex: '1 1 420px', minWidth: 0, gap: 12 }}>
           <label htmlFor="bb-text" style={{ fontWeight: 700, fontSize: 18 }}>1 · Describe your strategy</label>
           <textarea id="bb-text" rows={6} value={text} maxLength={3000} onChange={(ev) => setText(ev.target.value)} style={{ padding: 16, borderRadius: 16, border: '1px solid #D8D0C1', background: '#F6F1E9', color: '#0B1A36', fontSize: 17, resize: 'vertical' }} />
-          <span style={{ fontSize: 14, color: '#5A6780' }}>Works today with: EMA or SMA crossovers, RSI levels, MACD crossovers and breakouts of a recent high or low, on the 1-hour, 4-hour or daily chart.</span>
+          <span style={{ fontSize: 14, color: '#5A6780' }}>Understands supply and demand, support and resistance, candle patterns, fair value gaps, order blocks, BOS/CHoCH, liquidity sweeps, OTE, London breakout, inside bars, trend pullbacks, EMA/SMA crosses, RSI, MACD, Bollinger Bands, Stochastic, Supertrend and breakouts, on any chart from 1 minute to monthly. You can add a confirmation, a 200 EMA trend filter and a session filter.</span>
           <button type="button" onClick={check} disabled={busy === 'parse'} className="btn" style={{ alignSelf: 'flex-start', background: '#0B1A36', color: '#FFFFFF' }}>
             {busy === 'parse' ? <span className="spinner" aria-label="Reading" /> : 'Check my rules'} <span aria-hidden="true" style={{ color: '#FFB547' }}>»</span>
           </button>
@@ -154,14 +169,22 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
               </div>
               <details style={{ background: '#F6F1E9', borderRadius: 18, padding: '14px 18px' }}>
                 <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Change the rules</summary>
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 14 }}>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 14 }}>
                   <label className="field">Bot name<input className="input" value={rules.name} onChange={(ev) => upd({ name: ev.target.value })} /></label>
                   <label className="field">Market<input className="input" value={rules.symbol} onChange={(ev) => upd({ symbol: ev.target.value })} /></label>
-                  <label className="field">Timeframe<select className="input select" value={rules.timeframe} onChange={(ev) => upd({ timeframe: ev.target.value as Rules['timeframe'] })}><option value="H1">1-hour</option><option value="H4">4-hour</option><option value="D1">Daily</option></select></label>
-                  <label className="field">Entry<select className="input select" value={rules.entry.kind} onChange={(ev) => upd({ entry: { kind: ev.target.value as EntryKind } })}>{(Object.keys(ENTRY_LABEL) as EntryKind[]).map((k) => <option key={k} value={k}>{ENTRY_LABEL[k]}</option>)}</select></label>
+                  <label className="field">Timeframe<select className="input select" value={rules.timeframe} onChange={(ev) => upd({ timeframe: ev.target.value as Timeframe })}>{(Object.keys(TIMEFRAME_LABEL) as Timeframe[]).map((k) => <option key={k} value={k}>{TIMEFRAME_LABEL[k]}</option>)}</select></label>
+                  <label className="field">Entry<select className="input select" value={rules.entry.kind} onChange={(ev) => upd({ entry: { ...rules.entry, kind: ev.target.value as EntryKind } })}>{ENTRY_GROUPS.map((g) => <optgroup key={g.group} label={g.group}>{g.items.map((i) => <option key={i.kind} value={i.kind}>{i.label}</option>)}</optgroup>)}</select></label>
+                  <label className="field">Confirmation<select className="input select" value={rules.confirm?.kind || ''} onChange={(ev) => upd({ confirm: ev.target.value ? { kind: ev.target.value as EntryKind, within: rules.confirm?.within || 10 } : null })}><option value="">None</option>{ENTRY_GROUPS.map((g) => <optgroup key={g.group} label={g.group}>{g.items.filter((i) => i.kind !== rules.entry.kind).map((i) => <option key={i.kind} value={i.kind}>{i.label}</option>)}</optgroup>)}</select></label>
+                  {rules.confirm && <label className="field">Within (candles)<input className="input" type="number" value={rules.confirm.within} onChange={(ev) => upd({ confirm: { ...rules.confirm!, within: +ev.target.value } })} /></label>}
+                  <label className="field">Trend filter<select className="input select" value={rules.trendFilter} onChange={(ev) => upd({ trendFilter: ev.target.value as Rules['trendFilter'] })}><option value="none">None</option><option value="ema200">Only with the 200 EMA trend</option></select></label>
+                  <label className="field">Session<select className="input select" value={rules.session} onChange={(ev) => upd({ session: ev.target.value as Rules['session'] })}><option value="any">Any time</option><option value="london">London (07–16 UTC)</option><option value="newyork">New York (12–21 UTC)</option><option value="london_ny">London + New York (07–21 UTC)</option></select></label>
                   {(e?.kind === 'ema_cross' || e?.kind === 'sma_cross') && <><label className="field">Fast<input className="input" type="number" value={e.fast} onChange={(ev) => updEntry({ fast: +ev.target.value })} /></label><label className="field">Slow<input className="input" type="number" value={e.slow} onChange={(ev) => updEntry({ slow: +ev.target.value })} /></label></>}
-                  {e?.kind === 'rsi' && <><label className="field">RSI length<input className="input" type="number" value={e.period} onChange={(ev) => updEntry({ period: +ev.target.value })} /></label><label className="field">Buy below<input className="input" type="number" value={e.lower} onChange={(ev) => updEntry({ lower: +ev.target.value })} /></label><label className="field">Sell above<input className="input" type="number" value={e.upper} onChange={(ev) => updEntry({ upper: +ev.target.value })} /></label></>}
+                  {(e?.kind === 'rsi' || rules.confirm?.kind === 'rsi') && <><label className="field">RSI length<input className="input" type="number" value={e?.period} onChange={(ev) => updEntry({ period: +ev.target.value })} /></label><label className="field">Buy below<input className="input" type="number" value={e?.lower} onChange={(ev) => updEntry({ lower: +ev.target.value })} /></label><label className="field">Sell above<input className="input" type="number" value={e?.upper} onChange={(ev) => updEntry({ upper: +ev.target.value })} /></label></>}
                   {e?.kind === 'breakout' && <label className="field">Candles<input className="input" type="number" value={e.lookback} onChange={(ev) => updEntry({ lookback: +ev.target.value })} /></label>}
+                  {(e?.kind === 'bb' || rules.confirm?.kind === 'bb') && <><label className="field">Bollinger length<input className="input" type="number" value={e?.bbPeriod} onChange={(ev) => updEntry({ bbPeriod: +ev.target.value })} /></label><label className="field">Deviation<input className="input" type="number" step="0.1" value={e?.bbDev} onChange={(ev) => updEntry({ bbDev: +ev.target.value })} /></label></>}
+                  {(e?.kind === 'stoch' || rules.confirm?.kind === 'stoch') && <><label className="field">Stochastic %K<input className="input" type="number" value={e?.stochK} onChange={(ev) => updEntry({ stochK: +ev.target.value })} /></label><label className="field">%D<input className="input" type="number" value={e?.stochD} onChange={(ev) => updEntry({ stochD: +ev.target.value })} /></label></>}
+                  {(e?.kind === 'supertrend' || rules.confirm?.kind === 'supertrend') && <><label className="field">Supertrend ATR<input className="input" type="number" value={e?.stLen} onChange={(ev) => updEntry({ stLen: +ev.target.value })} /></label><label className="field">Factor<input className="input" type="number" step="0.1" value={e?.stMult} onChange={(ev) => updEntry({ stMult: +ev.target.value })} /></label></>}
+                  {(e?.kind === 'pullback' || rules.confirm?.kind === 'pullback') && <><label className="field">Trend EMA<input className="input" type="number" value={e?.trendLen} onChange={(ev) => updEntry({ trendLen: +ev.target.value })} /></label><label className="field">Pullback EMA<input className="input" type="number" value={e?.emaLen} onChange={(ev) => updEntry({ emaLen: +ev.target.value })} /></label></>}
                   <label className="field">Trades<select className="input select" value={rules.direction} onChange={(ev) => upd({ direction: ev.target.value as Rules['direction'] })}><option value="both">Buy and sell</option><option value="long">Buy only</option><option value="short">Sell only</option></select></label>
                   <label className="field">Stop loss (pips)<input className="input" type="number" value={rules.stopLossPips} onChange={(ev) => upd({ stopLossPips: +ev.target.value })} /></label>
                   <label className="field">Take profit (pips)<input className="input" type="number" value={rules.takeProfitPips} onChange={(ev) => upd({ takeProfitPips: +ev.target.value })} /></label>

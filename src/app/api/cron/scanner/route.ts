@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'crypto';
-import { hasDb } from '@/lib/db';
+import { db, hasDb } from '@/lib/db';
+import { SYMBOLS, TIMEFRAMES, type TF } from '@/lib/trading/symbols';
 import { fail, json } from '@/lib/http';
 import { refreshPrices } from '@/lib/trading/prices';
 import { scanAll, sendEventReminders, sendScanAlerts } from '@/lib/trading/scanner';
@@ -22,7 +23,16 @@ export async function GET(req: Request) {
   if (!hasDb()) return fail('Database not connected', 503);
   const out: Record<string, unknown> = {};
   try {
-    out.prices = process.env.TWELVE_DATA_API_KEY ? await refreshPrices(7) : 'TWELVE_DATA_API_KEY not set';
+    if (process.env.TWELVE_DATA_API_KEY) {
+      out.prices = await refreshPrices(4);
+      // fast timeframes only for markets that someone has a Telegram alert on
+      const q = await db();
+      const subs = (await q`SELECT markets, timeframes FROM mq_scan_alerts WHERE active`) as { markets: string[]; timeframes: string[] }[];
+      const fast = TIMEFRAMES.filter((t) => !t.background).map((t) => t.key as string);
+      const tfs = Array.from(new Set(subs.flatMap((s) => s.timeframes.filter((t) => fast.includes(t))))) as TF[];
+      const groups = new Set(subs.flatMap((s) => s.markets));
+      if (tfs.length) out.fastPrices = await refreshPrices(3, { symbols: SYMBOLS.filter((s) => groups.has(s.group)).map((s) => s.key), tfs });
+    } else out.prices = 'TWELVE_DATA_API_KEY not set';
     out.scan = await scanAll();
     out.alerts = await sendScanAlerts();
     out.reminders = await sendEventReminders();
