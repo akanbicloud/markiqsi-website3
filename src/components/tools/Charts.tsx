@@ -11,6 +11,7 @@ const SYMS = [
 
 export function Charts({ initial }: { initial?: string }) {
   const [tab, setTab] = useState<'replay' | 'live'>('replay');
+  const [note, setNote] = useState('');
   const [sym, setSym] = useState(SYMBOLS.find((x) => x.key === initial)?.tv || 'FX:EURUSD');
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -52,8 +53,9 @@ export function Charts({ initial }: { initial?: string }) {
         <button type="button" role="tab" className="toggle" aria-selected={tab === 'replay'} onClick={() => setTab('replay')}>History &amp; replay</button>
         <button type="button" role="tab" className="toggle" aria-selected={tab === 'live'} onClick={() => setTab('live')}>Live TradingView chart</button>
       </div>
+      {note && tab === 'live' && <div className="note note-info">{note}</div>}
       {tab === 'replay' ? (
-        <ChartLab initialSymbol={initial} />
+        <ChartLab initialSymbol={initial} onUnavailable={(why) => { setNote(`${why} Showing the live TradingView chart for now.`); setTab('live'); }} />
       ) : (
         <>
           <div className="row" role="group" aria-label="Market" style={{ gap: 8 }}>

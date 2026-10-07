@@ -11,7 +11,7 @@ type Trade = { id: number; side: 'Buy' | 'Sell'; entry: number; sl: number; tp: 
 const SPEEDS = [1, 2, 5, 10];
 const toBar = (x: Candle) => ({ time: Math.floor(x.t / 1000) as UTCTimestamp, open: x.o, high: x.h, low: x.l, close: x.c });
 
-export function ChartLab({ initialSymbol }: { initialSymbol?: string }) {
+export function ChartLab({ initialSymbol, onUnavailable }: { initialSymbol?: string; onUnavailable?: (why: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -69,9 +69,14 @@ export function ChartLab({ initialSymbol }: { initialSymbol?: string }) {
     if (before) u.set('before', String(before));
     const r = await fetch(`/api/history?${u}`);
     const d = await r.json().catch(() => ({}));
+    if (r.status === 503 || r.status === 404) {
+      onUnavailable?.(d.error || 'Chart history is being set up.');
+      throw new Error(d.error || 'Chart history is being set up.');
+    }
     if (!r.ok || !d.ok) throw new Error(d.error || 'Could not load the chart.');
     setPip(d.pip);
     return d as { candles: Candle[]; reachedStart: boolean };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sym, tf]);
 
   useEffect(() => {
