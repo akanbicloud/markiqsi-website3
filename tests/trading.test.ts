@@ -164,3 +164,11 @@ test('dedupe keeps one candle per time, oldest first', async () => {
   const out = dedupe([{ t: 2, o: 1, h: 2, l: 0, c: 1 }, { t: 1, o: 1, h: 2, l: 0, c: 1 }, { t: 2, o: 5, h: 6, l: 4, c: 5 }]);
   assert.deepEqual(out.map((x) => [x.t, x.o]), [[1, 1], [2, 5]]);
 });
+
+test('dropClosed removes flat closed-market runs but keeps normal candles', async () => {
+  const { dropClosed } = await import('../src/lib/trading/prices');
+  const k = (t: number, o: number, h: number, l: number, c: number) => ({ t, o, h, l, c });
+  const flat = (t: number) => k(t, 10, 10, 10, 10);
+  const c = [k(1, 9, 11, 8, 10), flat(2), flat(3), flat(4), flat(5), k(6, 10, 12, 9, 11), flat(7), k(8, 11, 12, 10, 11)];
+  assert.deepEqual(dropClosed(c).map((x) => x.t), [1, 6, 7, 8]);
+});

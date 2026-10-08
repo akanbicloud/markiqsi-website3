@@ -38,7 +38,25 @@ export async function fetchTwelve(sym: Sym, tf: TF, size: number, endDate?: stri
   const rows = (d.values as { datetime: string; open: string; high: string; low: string; close: string }[])
     .map((v) => ({ t: Date.parse(v.datetime.replace(' ', 'T') + (v.datetime.length > 10 ? 'Z' : 'T00:00:00Z')), o: +v.open, h: +v.high, l: +v.low, c: +v.close }))
     .filter((x) => Number.isFinite(x.t) && x.h >= x.l);
-  return dedupe(rows);
+  return dropClosed(dedupe(rows));
+}
+
+/**
+ * When a market is closed (weekends, holidays) some feeds keep sending "candles" that never move:
+ * open = high = low = close = the last price. They draw a flat line, so remove runs of 3 or more.
+ */
+export function dropClosed(c: Candle[]): Candle[] {
+  const flat = (x: Candle, p: Candle) => x.o === x.h && x.h === x.l && x.l === x.c && x.c === p.c;
+  const drop = new Array(c.length).fill(false);
+  let i = 1;
+  while (i < c.length) {
+    if (!flat(c[i], c[i - 1])) { i++; continue; }
+    let j = i;
+    while (j < c.length && flat(c[j], c[j - 1])) j++;
+    if (j - i >= 3) for (let k = i; k < j; k++) drop[k] = true;
+    i = j;
+  }
+  return c.filter((_, k) => !drop[k]);
 }
 
 /** Price feeds sometimes repeat a candle. Keep one candle per time (the last one), oldest first. */

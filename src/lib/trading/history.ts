@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { dedupe, fetchTwelve } from './prices';
+import { dedupe, dropClosed, fetchTwelve } from './prices';
 import { TIMEFRAMES, type Sym, type TF } from './symbols';
 import type { Candle } from './indicators';
 
@@ -64,6 +64,7 @@ export async function getHistory(sym: Sym, tf: TF, before: number | null, limit:
     }
     rows = await read();
   }
-  const candles = rows.map((r) => ({ t: Number(r.t), o: Number(r.o), h: Number(r.h), l: Number(r.l), c: Number(r.c) })).reverse();
+  // dropClosed also cleans history that was saved before this filter existed.
+  const candles = dropClosed(rows.map((r) => ({ t: Number(r.t), o: Number(r.o), h: Number(r.h), l: Number(r.l), c: Number(r.c) })).reverse());
   return { candles, reachedStart: reachedStart && rows.length < limit };
 }
