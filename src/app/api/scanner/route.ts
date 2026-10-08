@@ -49,6 +49,6 @@ export async function GET(req: Request) {
     return json({ ok: true, results, updatedAt: fresh[0]?.t || null, series: Number(fresh[0]?.total || 0), mineNote, fastNote });
   } catch (e) {
     console.error('scanner', e);
-    return json({ ok: false, error: 'The scanner could not load right now. Please try again.', detail: safeError(e) }, 500);
+    return json({ ok: false, error: 'The scanner could not load right now. Please try again.', detail: safeError(e) }, new URL(req.url).searchParams.has('debug') ? 200 : 500);
   }
 }
