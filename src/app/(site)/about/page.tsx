@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Founder } from '@/components/Founder';
 import { HelpBlock } from '@/components/HelpBlock';
 import { SITE } from '@/lib/site';
+import { RevealSection } from '@/components/motion/Reveal';
 
 export const metadata: Metadata = { title: 'About', description: 'MarkIQ SI is a market intelligence platform and trading academy.' };
 
@@ -76,7 +77,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="wrap" style={{ padding: '30px 16px 90px' }}>
+      <RevealSection className="wrap" style={{ padding: '30px 16px 90px' }}>
         <div className="grid g-2" style={{ gap: 22 }}>
           <div className="stack on-navy" style={{ background: '#0B1A36', color: '#FFFFFF', borderRadius: 34, padding: 'clamp(28px, 4vw, 48px)', gap: 16 }}>
             <span className="eyebrow">Our mission</span>
@@ -87,9 +88,9 @@ export default function AboutPage() {
             <p className="display" style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(26px, 2.6vw, 36px)', lineHeight: 1.18 }}>A generation of traders who know why markets move, manage risk with discipline, and build their own technology instead of chasing signals.</p>
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="wrap stack" style={{ padding: '20px 16px 100px', gap: 30 }}>
+      <RevealSection className="wrap stack" style={{ padding: '20px 16px 100px', gap: 30 }}>
         <Head eyebrow="Why we exist" title="Trading is hard enough. Getting the facts shouldn't be." />
         <div className="grid g-3" style={{ gap: 20 }}>
           {PROBLEMS.map((p) => (
@@ -103,9 +104,9 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
-      </section>
+      </RevealSection>
 
-      <section style={{ background: '#0B1A36', color: '#FFFFFF' }}>
+      <RevealSection style={{ background: '#0B1A36', color: '#FFFFFF' }}>
         <div className="wrap stack" style={{ padding: '110px 16px', gap: 36 }}>
           <Head light eyebrow="What we do" title="Four parts, one platform" text="Each part works on its own, and together they take a trader from understanding the market to trading it with a plan, and finally to automating it." />
           <div className="grid g-4" style={{ gap: 20 }}>
@@ -132,9 +133,9 @@ export default function AboutPage() {
             })}
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="wrap stack" style={{ padding: '110px 16px 60px', gap: 30 }}>
+      <RevealSection className="wrap stack" style={{ padding: '110px 16px 60px', gap: 30 }}>
         <Head eyebrow="How our market intelligence works" title="From official source to your phone" />
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           {FLOW.map((f) => (
@@ -145,9 +146,9 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="wrap" style={{ padding: '60px 16px 100px' }}>
+      <RevealSection className="wrap" style={{ padding: '60px 16px 100px' }}>
         <div className="card-lg stack" style={{ gap: 30 }}>
           <Head eyebrow="What we stand for" title="Our promises to every trader" />
           <div className="grid g-3" style={{ gap: '26px 36px' }}>
@@ -159,9 +160,9 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="wrap stack" style={{ padding: '0 16px 100px', gap: 30 }}>
+      <RevealSection className="wrap stack" style={{ padding: '0 16px 100px', gap: 30 }}>
         <Head eyebrow="Who we serve" title="Built for every stage of a trader's journey" />
         <div className="grid g-4" style={{ gap: 18 }}>
           {AUDIENCE.map((a) => (
@@ -171,11 +172,11 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
-      </section>
+      </RevealSection>
 
       <Founder label="Our founder" />
 
-      <section style={{ background: 'linear-gradient(180deg, #0B1A36 0%, #0D2350 100%)', color: '#FFFFFF' }}>
+      <RevealSection style={{ background: 'linear-gradient(180deg, #0B1A36 0%, #0D2350 100%)', color: '#FFFFFF' }}>
         <div className="wrap stack" style={{ padding: '110px 16px', gap: 34 }}>
           <Head light eyebrow="Where we're headed" title="We're just getting started" text="We release features only when they work with real data. Here is what is available at launch, what is in beta, and what comes next." />
           <div className="grid g-3" style={{ gap: 20 }}>
@@ -192,9 +193,9 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="stack center" style={{ padding: '110px 16px 40px', textAlign: 'center' }}>
+      <RevealSection className="stack center" style={{ padding: '110px 16px 40px', textAlign: 'center' }}>
         <div className="stack center" style={{ maxWidth: 1000, gap: 24 }}>
           <h2 className="display" style={{ fontWeight: 700, fontSize: 'clamp(38px, 5.6vw, 80px)', lineHeight: 1, letterSpacing: '-0.035em' }}>
             Learn the Market.
@@ -207,7 +208,7 @@ export default function AboutPage() {
             <a href={SITE.telegram || '/get-started'} className="btn btn-lg btn-outline">Join on Telegram <span className="arr" aria-hidden="true">»</span></a>
           </div>
         </div>
-      </section>
+      </RevealSection>
       <div style={{ height: 80 }} />
       <HelpBlock />
     </>

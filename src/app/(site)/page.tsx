@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { HelpBlock } from '@/components/HelpBlock';
 import { Founder } from '@/components/Founder';
 import { SITE } from '@/lib/site';
+import { Reveal, RevealGroup, RevealItem } from '@/components/motion/Reveal';
+import { TrackMarquee } from '@/components/motion/TrackMarquee';
 
 const TRACKS = [
   { title: 'Risk Management', level: 'All levels', bg: '#FFB547', fg: '#0B1A36', points: ['Position sizing: how much to trade', 'Stop losses that make sense', 'Trading psychology and discipline'] },
   { title: 'Technical Analysis', level: 'Beginner → Intermediate', bg: '#3DDC97', fg: '#0B1A36', points: ['Candlesticks and reading charts', 'Price action and market structure', 'Building your own trading plan'] },
-  { title: 'Trading Automation', level: 'Intermediate → Advanced', bg: '#0B1A36', fg: '#FFFFFF', center: true, points: ['Turn your strategy into a bot with Pine Script and MQL5', 'Build and test a strategy the right way', 'Deploy your bot to MT5 and trade it live', 'Publish and sell your bot or indicator'] },
+  { title: 'Trading Automation', level: 'Intermediate → Advanced', bg: '#0B1A36', fg: '#FFFFFF', points: ['Turn your strategy into a bot with Pine Script and MQL5', 'Build and test a strategy the right way', 'Deploy your bot to MT5 and trade it live', 'Publish and sell your bot or indicator'] },
   { title: 'Fundamental Analysis', level: 'Beginner → Intermediate', bg: '#1A5FD0', fg: '#FFFFFF', points: ['How news, inflation and jobs data move markets', 'Central banks and interest rates', 'Geopolitics: wars, elections, sanctions and trade', 'Trading the news safely'] },
   { title: 'Live Classes', level: 'All levels', bg: '#FF7A45', fg: '#0B1A36', points: ['Physical classes in person', 'Virtual sessions online', 'Ask a mentor your questions'] },
 ];
@@ -58,36 +60,11 @@ export default function Home() {
       </section>
 
       <section id="learn" aria-labelledby="courses-h" style={{ padding: '40px 0 120px', scrollMarginTop: 20 }}>
-        <div className="stack center" style={{ gap: 14, padding: '0 16px 30px' }}>
+        <Reveal className="stack center" style={{ gap: 14, padding: '0 16px 0' }}>
           <h2 id="courses-h" className="h2">What You&apos;ll Learn</h2>
           <p className="lead">Four clear tracks plus live classes, all in plain words.</p>
-        </div>
-        <div className="fan">
-          <div className="fan-bg" aria-hidden="true" />
-          {TRACKS.map((t, i) => {
-            const light = t.fg === '#FFFFFF';
-            return (
-              <article key={t.title} className={`fan-card fan-${i} stripes`} style={{ backgroundColor: t.bg, color: t.fg }}>
-                <span style={{ fontSize: 13, fontWeight: 600, padding: '5px 12px', borderRadius: 999, background: light ? 'rgba(255,255,255,0.18)' : 'rgba(11,26,54,0.12)' }}>{t.level}</span>
-                <h3 className="display" style={{ fontSize: t.center ? 42 : 36, lineHeight: 1.04, letterSpacing: '-0.025em' }}>{t.title}</h3>
-                <div className="stack" style={{ gap: 12 }}>
-                  {t.points.map((p) => (
-                    <div key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 17, lineHeight: 1.4, color: light ? 'rgba(255,255,255,0.92)' : 'rgba(11,26,54,0.88)' }}>
-                      <span aria-hidden="true" style={{ flex: 'none', width: 9, height: 9, borderRadius: '50%', marginTop: 8, background: light ? '#FFB547' : '#0B1A36' }} />
-                      <span>{p}</span>
-                    </div>
-                  ))}
-                </div>
-                <Link
-                  href="/get-started"
-                  style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 56, padding: '0 28px', borderRadius: 999, fontWeight: 600, fontSize: 18, textDecoration: 'none', color: t.fg, border: `1.5px solid ${light ? 'rgba(255,255,255,0.7)' : 'rgba(11,26,54,0.45)'}` }}
-                >
-                  See course <span aria-hidden="true">»</span>
-                </Link>
-              </article>
-            );
-          })}
-        </div>
+        </Reveal>
+        <TrackMarquee tracks={TRACKS} />
         <div className="stack center" style={{ gap: 18, marginTop: 30, padding: '0 16px' }}>
           <span style={{ fontSize: 20, fontWeight: 500 }}>Start as a beginner. Finish building your own trading robot.</span>
           <Link href="/get-started" className="btn">
@@ -98,12 +75,14 @@ export default function Home() {
 
       <section className="on-navy" style={{ background: '#0B1A36', color: '#FFFFFF' }}>
         <div className="wrap stack" style={{ padding: '110px 16px', gap: 40 }}>
-          <h2 className="h2 center" style={{ textAlign: 'center' }}>
-            Choose Your <span style={{ color: '#FFB547' }}>Path</span>
-          </h2>
-          <div className="grid g-3" style={{ gap: 20 }}>
+          <Reveal>
+            <h2 className="h2 center" style={{ textAlign: 'center' }}>
+              Choose Your <span style={{ color: '#FFB547' }}>Path</span>
+            </h2>
+          </Reveal>
+          <RevealGroup className="grid g-3" style={{ gap: 20 }}>
             {PATHS.map((p) => (
-              <div key={p.title} className="lift stack" style={{ borderRadius: 36, padding: '52px 40px', gap: 28, background: p.bg, color: p.dark ? '#0B1A36' : '#FFFFFF' }}>
+              <RevealItem key={p.title} className="stack" style={{ borderRadius: 36, padding: '52px 40px', gap: 28, background: p.bg, color: p.dark ? '#0B1A36' : '#FFFFFF' }}>
                 <h3 className="display" style={{ fontSize: 40, lineHeight: 1.02 }}>{p.title}</h3>
                 <div className="stack" style={{ gap: 14 }}>
                   {p.items.map((i) => (
@@ -116,9 +95,9 @@ export default function Home() {
                 <Link href={p.href} className={`btn ${p.dark ? '' : 'btn-white'}`} style={{ alignSelf: 'flex-start', marginTop: 'auto', ...(p.dark ? { background: '#0B1A36', color: '#FFFFFF' } : {}) }}>
                   {p.cta} <span aria-hidden="true">»</span>
                 </Link>
-              </div>
+              </RevealItem>
             ))}
-          </div>
+          </RevealGroup>
           <p style={{ margin: 0, textAlign: 'center', fontSize: 19, color: '#B9C9E6' }}>
             Questions?{' '}
             <Link href="/faqs" style={{ color: '#FFFFFF', fontWeight: 600 }}>
@@ -134,30 +113,32 @@ export default function Home() {
       </section>
 
       <section className="wrap stack" style={{ padding: '120px 16px 40px', gap: 40 }}>
-        <div className="stack center" style={{ gap: 14, textAlign: 'center' }}>
+        <Reveal className="stack center" style={{ gap: 14, textAlign: 'center' }}>
           <h2 className="h2">
             What Makes <span style={{ color: 'var(--blue)' }}>MarkIQ SI</span> Different
           </h2>
           <p className="lead" style={{ maxWidth: 760 }}>Official data, smart tools and a clear path from your first lesson to your own trading bot.</p>
-        </div>
-        <div className="grid g-3" style={{ gap: 22 }}>
+        </Reveal>
+        <RevealGroup className="grid g-3" style={{ gap: 22 }}>
           {DIFF.map((d) => (
-            <article key={d.title} className="lift" style={{ background: 'var(--surface)', borderRadius: 30, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <RevealItem key={d.title} style={{ display: 'flex' }}>
+            <article style={{ flex: 1, background: 'var(--surface)', borderRadius: 30, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div role="img" aria-label={d.alt} style={{ aspectRatio: '4 / 3', background: `url(${d.img}) center / cover no-repeat, ${d.grad}` }} />
               <div className="stack" style={{ padding: 28, gap: 12 }}>
                 <h3 className="display" style={{ fontSize: 27, lineHeight: 1.12 }}>{d.title}</h3>
                 <p style={{ margin: 0, fontSize: 17, color: 'var(--text)' }}>{d.text}</p>
               </div>
             </article>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
       </section>
 
       <Founder id="about" />
       <HelpBlock />
 
       <section className="stack center" style={{ padding: '20px 16px 130px', textAlign: 'center' }}>
-        <div className="stack center" style={{ maxWidth: 1000, margin: '0 auto', gap: 24 }}>
+        <Reveal className="stack center" style={{ maxWidth: 1000, margin: '0 auto', gap: 24 }}>
           <h2 className="display" style={{ fontWeight: 700, fontSize: 'clamp(40px, 6vw, 86px)', lineHeight: 1, letterSpacing: '-0.035em' }}>Start Learning. Start Building.</h2>
           <p className="lead" style={{ maxWidth: 720 }}>Create a free account to save your lessons, get market alerts on Telegram, and build and test your own trading bot.</p>
           <div className="row" style={{ justifyContent: 'center', gap: 14 }}>
@@ -168,7 +149,7 @@ export default function Home() {
               Join on Telegram <span className="arr" aria-hidden="true">»</span>
             </a>
           </div>
-        </div>
+        </Reveal>
       </section>
     </>
   );
