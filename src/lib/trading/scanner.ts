@@ -95,9 +95,11 @@ async function trends() {
 
 export async function fundamentalsContext(): Promise<Context> {
   const q = await db();
+  // News and rates come from the market bot. If its tables are missing or different, scan without them.
+  const safe = (p: Promise<Record<string, unknown>[]>) => p.catch((e) => { console.warn('fundamentals', (e as Error).message); return []; });
   const [events, rates] = await Promise.all([
-    q`SELECT currency, name, scheduled_at FROM mi_events WHERE impact = 'High' AND scheduled_at > now() AND scheduled_at < now() + interval '24 hours' ORDER BY scheduled_at`,
-    q`SELECT bank, currency, rate FROM mi_rates`,
+    safe(q`SELECT currency, name, scheduled_at FROM mi_events WHERE impact = 'High' AND scheduled_at > now() AND scheduled_at < now() + interval '24 hours' ORDER BY scheduled_at`),
+    safe(q`SELECT bank, currency, rate FROM mi_rates`),
   ]);
   const news = new Map<string, string>();
   for (const e of events as { currency: string; name: string; scheduled_at: string }[]) {

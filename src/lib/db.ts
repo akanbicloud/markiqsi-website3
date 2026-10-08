@@ -13,7 +13,8 @@ export function hasDb() {
 
 /** Neon over HTTP in production. Set DB_DRIVER=pg to use a normal Postgres server instead (local testing or self-hosting). */
 export function sql(): Sql {
-  const url = process.env.DATABASE_URL;
+  // Forgive common copy-paste slips: spaces, quotes, or the "psql" word copied from Neon.
+  const url = (process.env.DATABASE_URL || '').trim().replace(/^psql\s+/, '').replace(/^['"]|['"]$/g, '');
   if (!url) throw new Error('DATABASE_URL is not set');
   if (_sql) return _sql;
   if (process.env.DB_DRIVER === 'pg') {
@@ -39,12 +40,27 @@ export function sql(): Sql {
 
 let ready: Promise<void> | null = null;
 
+/** Setup steps that failed but are not needed for the website to run. */
+export const schemaWarnings: string[] = [];
+
 /** Creates every table the website needs, once per server start. Safe to run many times. */
 export function ensureSchema() {
   if (!ready) {
     ready = (async () => {
       const q = sql();
-      for (const stmt of SCHEMA) await q.query(stmt);
+      schemaWarnings.length = 0;
+      for (const stmt of SCHEMA) {
+        try {
+          await q.query(stmt);
+        } catch (e) {
+          // Bot tables (mi_*) and indexes may already exist in a different shape. Keep the website running.
+          const optional = /^\s*CREATE INDEX/i.test(stmt) || /\bmi_\w+/.test(stmt.split('(')[0]);
+          if (!optional) throw e;
+          const msg = `${stmt.trim().split('\n')[0].slice(0, 80)} -> ${(e as Error).message}`;
+          schemaWarnings.push(msg);
+          console.warn('schema', msg);
+        }
+      }
     })().catch((e) => {
       ready = null;
       throw e;

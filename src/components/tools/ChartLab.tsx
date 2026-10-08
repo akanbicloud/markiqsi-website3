@@ -69,11 +69,14 @@ export function ChartLab({ initialSymbol, onUnavailable }: { initialSymbol?: str
     if (before) u.set('before', String(before));
     const r = await fetch(`/api/history?${u}`);
     const d = await r.json().catch(() => ({}));
-    if (r.status === 503 || r.status === 404) {
-      onUnavailable?.(d.error || 'Chart history is being set up.');
-      throw new Error(d.error || 'Chart history is being set up.');
+    const failed = !r.ok || !d.ok;
+    const empty = !failed && !before && !d.candles?.length;
+    if (!before && (failed || empty)) {
+      const why = failed ? d.error || 'Chart history could not load.' : 'No price history came back for this market yet.';
+      onUnavailable?.(why);
+      throw new Error(why);
     }
-    if (!r.ok || !d.ok) throw new Error(d.error || 'Could not load the chart.');
+    if (failed) throw new Error(d.error || 'Could not load the chart.');
     setPip(d.pip);
     return d as { candles: Candle[]; reachedStart: boolean };
   // eslint-disable-next-line react-hooks/exhaustive-deps
