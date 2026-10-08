@@ -6,6 +6,15 @@ import { sendLoginEmail } from '@/lib/email';
 import { SITE } from '@/lib/site';
 
 export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (e) {
+    console.error('signup/login request', safeError(e));
+    return fail(`Sign-up is not working right now (${safeError(e).slice(0, 120)}). Please try again shortly.`, 500);
+  }
+}
+
+async function handle(req: Request) {
   if (!hasDb()) return fail('The website database is not connected yet.', 503);
   const b = await body(req);
   const mode = b.mode === 'login' ? 'login' : 'signup';
