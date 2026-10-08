@@ -37,7 +37,7 @@ export function MarketScanner({ signedIn, onOpenChart }: { signedIn: boolean; on
       const u = new URLSearchParams({ markets: markets.join(','), tf: tfs.join(','), strategies: strats.join(','), confirm: confirm ? '1' : '0' });
       const r = await fetch(`/api/scanner?${u}`);
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.ok) throw new Error(d.error || 'Could not load the scanner.');
+      if (!r.ok || !d.ok) throw new Error(`${d.error || 'Could not load the scanner.'}${d.detail ? ` (Reason: ${d.detail})` : ''}`);
       setRows(d.results);
       setMeta({ updatedAt: d.updatedAt, series: d.series, mineNote: d.mineNote, fastNote: d.fastNote || '' });
     } catch (e) {
