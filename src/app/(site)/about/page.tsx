@@ -5,7 +5,7 @@ import { HelpBlock } from '@/components/HelpBlock';
 import { SITE } from '@/lib/site';
 import { RevealSection } from '@/components/motion/Reveal';
 
-export const metadata: Metadata = { title: 'About', description: 'MarkIQ SI is a market intelligence platform and trading academy.' };
+export const metadata: Metadata = { title: 'About', description: 'MarkIQ SI is a market intelligence platform and trading academy founded by Oloyede Naheem Pelumi. Learn what we do, how we use official data, and how we build trading technology.', alternates: { canonical: '/about' }, openGraph: { title: 'About · MarkIQ SI', description: 'MarkIQ SI is a market intelligence platform and trading academy founded by Oloyede Naheem Pelumi. Learn what we do, how we use official data, and how we build trading technology.', url: '/about', images: ['/og.png'] } };
 
 const PROBLEMS = [
   { n: '01', title: 'The price moves before anyone explains why.', text: 'Inflation numbers, rate decisions and world events move markets in seconds. Most traders find out what happened only after the move is over.', answer: 'alerts before and after every major release, with the official numbers and a plain explanation.' },

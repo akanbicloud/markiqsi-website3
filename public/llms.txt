@@ -1,0 +1,32 @@
+# MarkIQ SI
+
+> MarkIQ SI (Market Intelligence & Academy) is a market intelligence platform and trading academy. It sends alerts on important economic news using official data, explains market news in plain words, teaches trading from beginner to advanced, and gives traders free tools to plan, test and automate their trading. Founded by Oloyede Naheem Pelumi. Website: https://www.markiqsi.com
+
+Key facts:
+- Covers forex, gold and oil, stock indices and crypto.
+- News and economic events cover the US, UK, Euro area, Japan, China, Canada and Australia, plus geopolitics (wars, elections, sanctions, trade).
+- Numbers come from official sources such as the US Bureau of Labor Statistics and central banks. AI is used to explain data, never to invent it.
+- Alerts are sent on Telegram, before a big release and again when the official result is out.
+- MarkIQ SI provides education and information, not financial advice. Trading carries a high risk of loss.
+
+## Main pages
+- [Home](https://www.markiqsi.com/): what MarkIQ SI offers and the four learning tracks (Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation) plus live classes.
+- [Markets](https://www.markiqsi.com/markets): this week's big economic events, central bank interest rates, results, central bank broadcasts and news in plain words. "Ask MarkIQ" explains the fundamentals behind any currency pair or asset, including history.
+- [Tools](https://www.markiqsi.com/tools): free trading tools (listed below).
+- [About](https://www.markiqsi.com/about): the mission, team and how MarkIQ SI works.
+- [FAQs](https://www.markiqsi.com/faqs): answers about accounts, alerts, courses, tools and safety.
+- [Get Started](https://www.markiqsi.com/get-started): create a free account (email link, no password).
+
+## Tools
+- [Risk Calculator](https://www.markiqsi.com/tools?tool=risk): position size from account size, risk percent and stop loss.
+- [Prop Challenge Tracker](https://www.markiqsi.com/tools?tool=prop): track a prop firm challenge against its daily and total loss limits and profit target.
+- [Market Scanner](https://www.markiqsi.com/tools?tool=scan): scans markets on timeframes from 1 minute to monthly for supply and demand zones, support and resistance, candle patterns, ICT and SMC setups (fair value gaps, order blocks, break of structure, liquidity sweeps, OTE), EMA, RSI, MACD, Bollinger Bands, Stochastic, Supertrend and more, with higher-timeframe confirmation and optional Telegram alerts.
+- [Charts](https://www.markiqsi.com/tools?tool=charts): years of price history from 1 minute to monthly with bar replay for practice, plus a live TradingView chart.
+- [Bot Builder](https://www.markiqsi.com/tools?tool=bot): describe a strategy in plain words; it builds an MT5 Expert Advisor (MQL5) and a TradingView Pine Script strategy with risk limits, and backtests it on past data.
+- [Trading Journal](https://www.markiqsi.com/tools?tool=journal): log trades and review results.
+
+## Contact
+- Email: markiqsi2@gmail.com
+- Phone / WhatsApp: +234 901 677 1255
+- Instagram: https://www.instagram.com/markiqsi
+- X: https://x.com/MarkIQSI3

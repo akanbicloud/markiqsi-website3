@@ -1,7 +1,7 @@
 export const SITE = {
   name: 'MarkIQ SI',
   tagline: 'Market Intelligence & Academy',
-  url: process.env.SITE_URL || 'https://markiqsi.com',
+  url: (process.env.SITE_URL || 'https://www.markiqsi.com').replace(/\/$/, ''),
   email: 'markiqsi2@gmail.com',
   phoneDisplay: '0901 677 1255',
   phoneIntl: '+234 901 677 1255',
