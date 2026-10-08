@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" font-family="Inter, 'IBM Plex Sans', system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#128A5B"/><stop offset="1" stop-color="#0B1A36"/></linearGradient>
+    <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3DDC97" stop-opacity=".45"/><stop offset="1" stop-color="#3DDC97" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- laptop -->
+  <rect x="90" y="110" width="620" height="380" rx="24" fill="#0B1A36"/>
+  <rect x="108" y="128" width="584" height="344" rx="12" fill="#0F2247"/>
+  <path d="M50 490h700l-40 40H90z" fill="#C9D6EE"/><rect x="350" y="490" width="100" height="10" rx="5" fill="#9FB0CF"/>
+  <!-- code panel -->
+  <rect x="126" y="146" width="250" height="308" rx="10" fill="#0B1A36"/>
+  <g>
+    <circle cx="146" cy="166" r="5" fill="#E0592A"/><circle cx="162" cy="166" r="5" fill="#FFB547"/><circle cx="178" cy="166" r="5" fill="#3DDC97"/>
+    <rect x="146" y="192" width="70" height="9" rx="4.5" fill="#7C9CFF"/><rect x="224" y="192" width="110" height="9" rx="4.5" fill="#C9D6EE"/>
+    <rect x="162" y="214" width="90" height="9" rx="4.5" fill="#FFB547"/><rect x="260" y="214" width="60" height="9" rx="4.5" fill="#C9D6EE"/>
+    <rect x="162" y="236" width="140" height="9" rx="4.5" fill="#3DDC97"/>
+    <rect x="178" y="258" width="100" height="9" rx="4.5" fill="#C9D6EE"/><rect x="286" y="258" width="40" height="9" rx="4.5" fill="#7C9CFF"/>
+    <rect x="178" y="280" width="130" height="9" rx="4.5" fill="#C9D6EE"/>
+    <rect x="162" y="302" width="60" height="9" rx="4.5" fill="#FFB547"/>
+    <rect x="146" y="324" width="40" height="9" rx="4.5" fill="#7C9CFF"/>
+    <rect x="146" y="358" width="200" height="9" rx="4.5" fill="#2B4A82"/><rect x="146" y="380" width="160" height="9" rx="4.5" fill="#2B4A82"/>
+    <rect x="146" y="402" width="180" height="9" rx="4.5" fill="#2B4A82"/>
+  </g>
+  <!-- chart panel -->
+  <rect x="392" y="146" width="282" height="308" rx="10" fill="#F6F1E9"/>
+  <text x="410" y="176" font-size="14" font-weight="700" fill="#0B1A36">Backtest</text>
+  <g stroke="#E2DACB" stroke-width="1"><path d="M410 220h246M410 270h246M410 320h246M410 370h246"/></g>
+  <path d="M410 380 L440 370 L465 376 L492 350 L515 356 L540 330 L565 336 L590 300 L615 308 L640 270 L656 262 L656 410 L410 410Z" fill="url(#eq)"/>
+  <path d="M410 380 L440 370 L465 376 L492 350 L515 356 L540 330 L565 336 L590 300 L615 308 L640 270 L656 262" fill="none" stroke="#128A5B" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- candles -->
+  <g>
+    <rect x="430" y="200" width="3" height="40" fill="#16A34A"/><rect x="425" y="208" width="13" height="22" rx="2" fill="#16A34A"/>
+    <rect x="455" y="196" width="3" height="36" fill="#E0592A"/><rect x="450" y="204" width="13" height="18" rx="2" fill="#E0592A"/>
+    <rect x="480" y="188" width="3" height="40" fill="#16A34A"/><rect x="475" y="194" width="13" height="26" rx="2" fill="#16A34A"/>
+  </g>
+  <!-- steps -->
+  <g font-size="13" font-weight="700">
+    <rect x="410" y="420" width="72" height="24" rx="12" fill="#0B1A36"/><text x="446" y="436" fill="#fff" text-anchor="middle">Build</text>
+    <rect x="490" y="420" width="72" height="24" rx="12" fill="#1A5FD0"/><text x="526" y="436" fill="#fff" text-anchor="middle">Test</text>
+    <rect x="570" y="420" width="86" height="24" rx="12" fill="#3DDC97"/><text x="613" y="436" fill="#0B1A36" text-anchor="middle">Go live</text>
+  </g>
+  <!-- live badge -->
+  <g transform="translate(600 72)"><rect width="150" height="54" rx="27" fill="#fff"/><circle cx="30" cy="27" r="9" fill="#16A34A"/><text x="50" y="33" font-size="17" font-weight="800" fill="#0B1A36">MT5 · Live</text></g>
+</svg>

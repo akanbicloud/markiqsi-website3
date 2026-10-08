@@ -20,9 +20,9 @@ const PATHS = [
 ];
 
 const DIFF = [
-  { title: 'Real Data, Never Guesses', text: 'Every number comes from official sources like the US Bureau of Labor Statistics and central banks, dated and sourced. Our AI explains the data; it never makes it up.', img: '/images/different-1.jpg', alt: 'A phone showing a market alert', grad: 'linear-gradient(160deg, #6FA8F5 0%, #1A5FD0 60%, #0D2350 100%)' },
-  { title: 'Alerts Before and After the News', text: 'Get a heads-up before big news, then the result and what it means the moment it is released, straight to Telegram.', img: '/images/different-2.jpg', alt: 'A hand holding a phone with a notification', grad: 'linear-gradient(160deg, #FFD38A 0%, #F09A1A 55%, #8A4B00 100%)' },
-  { title: 'Build, Test, Then Go Live', text: 'Our Bot Builder turns your strategy into a working bot, tests it on past data and a demo account, then helps you run it live on your own MT5.', img: '/images/different-3.jpg', alt: 'A laptop with code beside a trading chart', grad: 'linear-gradient(160deg, #3DDC97 0%, #128A5B 55%, #0B1A36 100%)' },
+  { title: 'Real Data, Never Guesses', text: 'Every number comes from official sources like the US Bureau of Labor Statistics and central banks, dated and sourced. Our AI explains the data; it never makes it up.', img: '/images/different-1.svg', alt: 'A phone showing an inflation report with its official source checked', grad: 'linear-gradient(160deg, #6FA8F5 0%, #1A5FD0 60%, #0D2350 100%)' },
+  { title: 'Alerts Before and After the News', text: 'Get a heads-up before big news, then the result and what it means the moment it is released, straight to Telegram.', img: '/images/different-2.svg', alt: 'A phone with two Telegram alerts, one before the news and one after', grad: 'linear-gradient(160deg, #FFD38A 0%, #F09A1A 55%, #8A4B00 100%)' },
+  { title: 'Build, Test, Then Go Live', text: 'Our Bot Builder turns your strategy into a working bot, tests it on past data and a demo account, then helps you run it live on your own MT5.', img: '/images/different-3.svg', alt: 'A laptop showing bot code next to a backtest chart, with an MT5 live badge', grad: 'linear-gradient(160deg, #3DDC97 0%, #128A5B 55%, #0B1A36 100%)' },
 ];
 
 export default function Home() {
