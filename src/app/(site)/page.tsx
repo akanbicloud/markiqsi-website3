@@ -3,7 +3,7 @@ import { HelpBlock } from '@/components/HelpBlock';
 import { Founder } from '@/components/Founder';
 import { SITE } from '@/lib/site';
 import { Reveal, RevealGroup, RevealItem } from '@/components/motion/Reveal';
-import { TrackMarquee } from '@/components/motion/TrackMarquee';
+import { TrackFan } from '@/components/motion/TrackFan';
 
 const TRACKS = [
   { title: 'Risk Management', level: 'All levels', bg: '#FFB547', fg: '#0B1A36', points: ['Position sizing: how much to trade', 'Stop losses that make sense', 'Trading psychology and discipline'] },
@@ -59,12 +59,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="learn" aria-labelledby="courses-h" style={{ padding: '40px 0 120px', scrollMarginTop: 20 }}>
+      <section id="learn" aria-labelledby="courses-h" style={{ padding: '40px 0 120px', scrollMarginTop: 20, overflowX: 'clip' }}>
         <Reveal className="stack center" style={{ gap: 14, padding: '0 16px 0' }}>
           <h2 id="courses-h" className="h2">What You&apos;ll Learn</h2>
           <p className="lead">Four clear tracks plus live classes, all in plain words.</p>
         </Reveal>
-        <TrackMarquee tracks={TRACKS} />
+        <TrackFan tracks={TRACKS} />
         <div className="stack center" style={{ gap: 18, marginTop: 30, padding: '0 16px' }}>
           <span style={{ fontSize: 20, fontWeight: 500 }}>Start as a beginner. Finish building your own trading robot.</span>
           <Link href="/get-started" className="btn">
