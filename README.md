@@ -29,7 +29,7 @@ npm run dev
 `npm test` runs the trading engine tests (18 tests, including a check that no strategy ever looks at future candles). `npm run typecheck` checks types.
 
 ## Add photos
-Put three photos in `public/images/` named `different-1.jpg`, `different-2.jpg`, `different-3.jpg` (the "What Makes MarkIQ SI Different" cards). Until then a coloured background shows.
+The "What Makes MarkIQ SI Different" cards use the illustrations `public/images/different-1.svg` to `different-3.svg`. To use photos instead, add them to `public/images/` and change the `img` paths in `src/app/(site)/page.tsx`.
 
 ## Social links
 Edit `src/lib/site.ts` to add the Facebook link. Set `NEXT_PUBLIC_TELEGRAM_URL` in Vercel for the Telegram channel link.
