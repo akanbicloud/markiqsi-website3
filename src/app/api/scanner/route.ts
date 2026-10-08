@@ -1,5 +1,5 @@
 import { db, hasDb } from '@/lib/db';
-import { fail, json } from '@/lib/http';
+import { fail, json, safeError } from '@/lib/http';
 import { getSession } from '@/lib/session';
 import { currentSetups, enrich, fundamentalsContext, scanAll, scanMine } from '@/lib/trading/scanner';
 import { refreshPrices } from '@/lib/trading/prices';
@@ -49,6 +49,6 @@ export async function GET(req: Request) {
     return json({ ok: true, results, updatedAt: fresh[0]?.t || null, series: Number(fresh[0]?.total || 0), mineNote, fastNote });
   } catch (e) {
     console.error('scanner', e);
-    return fail('The scanner could not load right now. Please try again.', 500);
+    return json({ ok: false, error: 'The scanner could not load right now. Please try again.', detail: safeError(e) }, 500);
   }
 }

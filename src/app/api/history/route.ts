@@ -1,5 +1,6 @@
 import { hasDb } from '@/lib/db';
-import { fail, json } from '@/lib/http';
+import { json, safeError } from '@/lib/http';
+import { fail } from '@/lib/http';
 import { getHistory } from '@/lib/trading/history';
 import { TF_KEYS, findSymbol, type TF } from '@/lib/trading/symbols';
 
@@ -21,6 +22,6 @@ export async function GET(req: Request) {
   } catch (e) {
     const msg = (e as Error).message;
     console.error('history', msg);
-    return fail(/credit|limit/i.test(msg) ? 'Our price data limit is busy. Please try again in a minute.' : 'Could not load chart history. Please try again.', 502);
+    return json({ ok: false, error: /credit|limit/i.test(msg) ? 'Our price data limit is busy. Please try again in a minute.' : 'Could not load chart history. Please try again.', detail: safeError(e) }, 502);
   }
 }

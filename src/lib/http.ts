@@ -28,3 +28,13 @@ export function str(v: unknown, max = 500) {
 export function isEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) && v.length <= 254;
 }
+
+/** An error message that is safe to show: connection strings, keys and long tokens are hidden. */
+export function safeError(e: unknown) {
+  return String((e as Error)?.message ?? e)
+    .replace(/postgres(ql)?:\/\/\S+/gi, 'postgres://***')
+    .replace(/apikey=\S+/gi, 'apikey=***')
+    .replace(/bot\d+:[\w-]+/g, 'bot***')
+    .replace(/[A-Za-z0-9_-]{28,}/g, '***')
+    .slice(0, 300);
+}
