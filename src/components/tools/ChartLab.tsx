@@ -72,7 +72,7 @@ export function ChartLab({ initialSymbol, onUnavailable }: { initialSymbol?: str
     const failed = !r.ok || !d.ok;
     const empty = !failed && !before && !d.candles?.length;
     if (!before && (failed || empty)) {
-      const why = failed ? d.error || 'Chart history could not load.' : 'No price history came back for this market yet.';
+      const why = failed ? `${d.error || 'Chart history could not load.'}${d.detail ? ` (Reason: ${d.detail})` : ''}` : 'No price history came back for this market yet.';
       onUnavailable?.(why);
       throw new Error(why);
     }
