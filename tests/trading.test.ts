@@ -158,3 +158,9 @@ test('backtest is consistent', () => {
   const sig = signalSeries(r, c);
   assert.ok(sig.some((v) => v === 1) && sig.some((v) => v === -1));
 });
+
+test('dedupe keeps one candle per time, oldest first', async () => {
+  const { dedupe } = await import('../src/lib/trading/prices');
+  const out = dedupe([{ t: 2, o: 1, h: 2, l: 0, c: 1 }, { t: 1, o: 1, h: 2, l: 0, c: 1 }, { t: 2, o: 5, h: 6, l: 4, c: 5 }]);
+  assert.deepEqual(out.map((x) => [x.t, x.o]), [[1, 1], [2, 5]]);
+});

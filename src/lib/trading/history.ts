@@ -1,11 +1,12 @@
 import { db } from '../db';
-import { fetchTwelve } from './prices';
+import { dedupe, fetchTwelve } from './prices';
 import { TIMEFRAMES, type Sym, type TF } from './symbols';
 import type { Candle } from './indicators';
 
 const PAGE = 5000;
 
-async function save(sym: Sym, tf: TF, c: Candle[]) {
+async function save(sym: Sym, tf: TF, raw: Candle[]) {
+  const c = dedupe(raw);
   if (!c.length) return;
   const q = await db();
   for (let i = 0; i < c.length; i += 1000) {

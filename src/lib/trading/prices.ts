@@ -35,9 +35,17 @@ export async function fetchTwelve(sym: Sym, tf: TF, size: number, endDate?: stri
   const r = await fetch(u, { signal: AbortSignal.timeout(20000), cache: 'no-store' });
   const d = await r.json();
   if (d.status === 'error' || !Array.isArray(d.values)) throw new Error(d.message || `Price data error for ${sym.td}`);
-  return (d.values as { datetime: string; open: string; high: string; low: string; close: string }[])
+  const rows = (d.values as { datetime: string; open: string; high: string; low: string; close: string }[])
     .map((v) => ({ t: Date.parse(v.datetime.replace(' ', 'T') + (v.datetime.length > 10 ? 'Z' : 'T00:00:00Z')), o: +v.open, h: +v.high, l: +v.low, c: +v.close }))
     .filter((x) => Number.isFinite(x.t) && x.h >= x.l);
+  return dedupe(rows);
+}
+
+/** Price feeds sometimes repeat a candle. Keep one candle per time (the last one), oldest first. */
+export function dedupe(c: Candle[]): Candle[] {
+  const m = new Map<number, Candle>();
+  for (const x of c) m.set(x.t, x);
+  return [...m.values()].sort((a, b) => a.t - b.t);
 }
 
 /** Drops the candle that is still forming, so all signals use finished candles only. */
