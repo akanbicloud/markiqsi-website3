@@ -65,6 +65,26 @@ export async function GET() {
     }
   }
 
+  // Email (Resend): is the sending domain verified?
+  const rk = process.env.RESEND_API_KEY?.trim();
+  if (!rk) out.email = 'NOT SET: add RESEND_API_KEY in Vercel';
+  else {
+    const from = process.env.EMAIL_FROM || '';
+    const domain = (from.match(/@([^>\s]+)/) || [])[1]?.toLowerCase() || '';
+    try {
+      const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${rk}` }, cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      const d = await r.json();
+      if (!r.ok) out.email = r.status === 401 && /restrict/i.test(d.message || '') ? 'Key works for sending only, so domain status cannot be checked here. Check Resend > Domains.' : 'KEY REJECTED: ' + clean(d.message || String(r.status));
+      else {
+        const list = (d.data || []) as { name: string; status: string }[];
+        const mine = list.find((x) => x.name.toLowerCase() === domain);
+        out.email = !domain ? 'EMAIL_FROM has no @domain' : mine ? (mine.status === 'verified' ? `OK (${domain} verified)` : `DOMAIN NOT VERIFIED YET: ${domain} is "${mine.status}" in Resend`) : `DOMAIN MISSING: ${domain} is not added in Resend (added: ${list.map((x) => `${x.name} = ${x.status}`).join(', ') || 'none'})`;
+      }
+    } catch (e) {
+      out.email = 'CANNOT REACH: ' + clean((e as Error).message);
+    }
+  }
+
   // Telegram
   const tg = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!tg) out.telegram = 'NOT SET';

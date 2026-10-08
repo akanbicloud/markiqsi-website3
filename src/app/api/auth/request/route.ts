@@ -44,7 +44,7 @@ async function handle(req: Request) {
     await sendLoginEmail(email, link, purpose, name || null);
   } catch (e) {
     console.error('email failed', safeError(e));
-    return fail(`We could not send the email. Please try again, or contact ${SITE.email}.`, 502);
+    return fail(`We could not send the email. Please try again, or contact ${SITE.email}. (Reason: ${safeError(e).slice(0, 160)})`, 502);
   }
   return json({ ok: true, purpose });
 }
