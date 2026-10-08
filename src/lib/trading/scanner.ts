@@ -1,3 +1,4 @@
+import { safeError } from '../http';
 import { db } from '../db';
 import { esc, sendTelegram } from '../telegram';
 import { runAll } from './detect';
@@ -96,7 +97,7 @@ async function trends() {
 export async function fundamentalsContext(): Promise<Context> {
   const q = await db();
   // News and rates come from the market bot. If its tables are missing or different, scan without them.
-  const safe = (p: Promise<Record<string, unknown>[]>) => p.catch((e) => { console.warn('fundamentals', (e as Error).message); return []; });
+  const safe = (p: Promise<Record<string, unknown>[]>) => p.catch((e) => { console.warn('fundamentals', safeError(e)); return []; });
   const [events, rates] = await Promise.all([
     safe(q`SELECT currency, name, scheduled_at FROM mi_events WHERE impact = 'High' AND scheduled_at > now() AND scheduled_at < now() + interval '24 hours' ORDER BY scheduled_at`),
     safe(q`SELECT bank, currency, rate FROM mi_rates`),
@@ -181,7 +182,7 @@ export async function sendScanAlerts() {
         await sendTelegram(s.telegram_chat_id, text);
         sent++;
       } catch (e) {
-        console.error('telegram send failed', e);
+        console.error('telegram send failed', safeError(e));
       }
     }
   }
@@ -208,7 +209,7 @@ export async function sendEventReminders() {
       await q`UPDATE mq_event_reminders SET sent_at = now() WHERE user_id = ${d.user_id} AND event_id = ${d.event_id}`;
       sent++;
     } catch (e) {
-      console.error('reminder failed', e);
+      console.error('reminder failed', safeError(e));
     }
   }
   return { sent };

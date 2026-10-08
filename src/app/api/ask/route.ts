@@ -1,3 +1,4 @@
+import { safeError } from '@/lib/http';
 import { db, hasDb } from '@/lib/db';
 import { body, clientIp, fail, json, str } from '@/lib/http';
 import { sha256 } from '@/lib/crypto';
@@ -62,7 +63,7 @@ Return JSON only with this shape: {"simply": string (one sentence), "drivers": [
       remaining: Math.max(0, limit - used[0].count),
     });
   } catch (e) {
-    console.error('ask failed', e);
+    console.error('ask failed', safeError(e));
     return fail('Ask MarkIQ could not answer just now. Please try again in a minute.', 502);
   }
 }

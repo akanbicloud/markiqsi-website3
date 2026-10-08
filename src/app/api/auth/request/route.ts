@@ -1,3 +1,4 @@
+import { safeError } from '@/lib/http';
 import { db, hasDb } from '@/lib/db';
 import { body, fail, isEmail, json, str } from '@/lib/http';
 import { randomToken, sha256 } from '@/lib/crypto';
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   try {
     await sendLoginEmail(email, link, purpose, name || null);
   } catch (e) {
-    console.error('email failed', e);
+    console.error('email failed', safeError(e));
     return fail(`We could not send the email. Please try again, or contact ${SITE.email}.`, 502);
   }
   return json({ ok: true, purpose });

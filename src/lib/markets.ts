@@ -1,3 +1,4 @@
+import { safeError } from '@/lib/http';
 import { db, hasDb } from './db';
 
 export type EventRow = { id: string; country: string; currency: string; name: string; impact: string; scheduled_at: string; what: string | null; why: string | null; markets: string[]; forecast: string | null; previous: string | null; source: string | null };
@@ -30,7 +31,7 @@ export async function loadMarketData(): Promise<MarketData> {
       live: (live as LiveRow[])[0] || null,
     };
   } catch (e) {
-    console.error('market data', e);
+    console.error('market data', safeError(e));
     return { connected: false, events: [], results: [], news: [], rates: [], live: null, error: 'Market data is temporarily unavailable.' };
   }
 }

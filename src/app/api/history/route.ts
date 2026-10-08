@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     return json({ ok: true, symbol: sym.label, pip: sym.pip, ...h });
   } catch (e) {
     const msg = (e as Error).message;
-    console.error('history', msg);
+    console.error('history', safeError(e));
     return json({ ok: false, error: /credit|limit/i.test(msg) ? 'Our price data limit is busy. Please try again in a minute.' : 'Could not load chart history. Please try again.', detail: safeError(e) }, new URL(req.url).searchParams.has('debug') ? 200 : 502);
   }
 }

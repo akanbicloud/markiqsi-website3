@@ -1,3 +1,4 @@
+import { safeError } from './http';
 import { neon } from '@neondatabase/serverless';
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -56,7 +57,7 @@ export function ensureSchema() {
           // Bot tables (mi_*) and indexes may already exist in a different shape. Keep the website running.
           const optional = /^\s*CREATE INDEX/i.test(stmt) || /\bmi_\w+/.test(stmt.split('(')[0]);
           if (!optional) throw e;
-          const msg = `${stmt.trim().split('\n')[0].slice(0, 80)} -> ${(e as Error).message}`;
+          const msg = `${stmt.trim().split('\n')[0].slice(0, 80)} -> ${safeError(e)}`;
           schemaWarnings.push(msg);
           console.warn('schema', msg);
         }

@@ -1,3 +1,4 @@
+import { safeError } from '@/lib/http';
 import { timingSafeEqual } from 'crypto';
 import { db, hasDb } from '@/lib/db';
 import { SYMBOLS, TIMEFRAMES, type TF } from '@/lib/trading/symbols';
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
     out.reminders = await sendEventReminders();
     return json({ ok: true, ...out });
   } catch (e) {
-    console.error('cron', e);
+    console.error('cron', safeError(e));
     return json({ ok: false, error: (e as Error).message, ...out }, 500);
   }
 }

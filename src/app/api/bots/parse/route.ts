@@ -1,3 +1,4 @@
+import { safeError } from '@/lib/http';
 import { body, fail, json, str } from '@/lib/http';
 import { describeRules, parseStrategy, sanitizeRules, type Rules } from '@/lib/trading/botspec';
 import { gemini, parseJson } from '@/lib/gemini';
@@ -24,7 +25,7 @@ Never invent numbers the trader did not give: leave them out instead. If the str
         via = 'ai';
       }
     } catch (e) {
-      console.error('parse ai', e);
+      console.error('parse ai', safeError(e));
     }
   }
   if (via === 'rules' && !local.confident) {
