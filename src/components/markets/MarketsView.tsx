@@ -111,7 +111,10 @@ export function MarketsView({ data, signedIn, telegramUrl }: { data: MarketData;
       <section aria-labelledby="events-h" className="wrap stack" style={{ padding: '50px 16px 30px', gap: 20 }}>
         <h2 id="events-h" className="h2">This week&apos;s big events</h2>
         {data.events.length === 0 ? (
-          <Empty>{data.error || 'The calendar fills in automatically from official sources. No upcoming events are loaded yet. Please check back soon.'}</Empty>
+          <Empty>
+            {data.error || 'The calendar fills in automatically from official sources. No upcoming events are loaded yet. Please check back soon.'}
+            {data.feedStatus && <span className="small faint" style={{ display: 'block', marginTop: 8 }}>Data status: {data.feedStatus}</span>}
+          </Empty>
         ) : (
           <>
             <div className="row" style={{ gap: 14, justifyContent: 'space-between', alignItems: 'center' }}>
