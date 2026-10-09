@@ -3,7 +3,7 @@ import { hasDb } from '@/lib/db';
 import { body, fail, json } from '@/lib/http';
 import { sanitizeRules } from '@/lib/trading/botspec';
 import { backtest } from '@/lib/trading/backtest';
-import { getBacktestCandles } from '@/lib/trading/prices';
+import { digitsFor, getBacktestCandles } from '@/lib/trading/prices';
 import { findSymbol, type TF } from '@/lib/trading/symbols';
 
 export const maxDuration = 60;
@@ -20,7 +20,12 @@ export async function POST(req: Request) {
     const candles = await getBacktestCandles(sym, tf);
     if (candles.length < 200) return fail('Not enough price history to test this market.');
     const spread = sym.group === 'Forex' ? (sym.key.includes('JPY') || sym.key === 'GBPJPY' ? 1.5 : 1) : sym.group === 'Crypto' ? 2 : 3;
-    return json({ ok: true, symbol: sym.label, timeframe: rules.timeframe, result: backtest(rules, candles, sym.pip, spread) });
+    const result = backtest(rules, candles, sym.pip, spread);
+    // The candles go back too (compact [time, open, high, low, close]) so the browser can replay the test.
+    const f = 10 ** Math.min(6, digitsFor(sym) + 1);
+    const r5 = (v: number) => Math.round(v * f) / f;
+    const bars = candles.map((x) => [Math.floor(x.t / 1000), r5(x.o), r5(x.h), r5(x.l), r5(x.c)]);
+    return json({ ok: true, symbol: sym.label, timeframe: rules.timeframe, digits: digitsFor(sym), pip: sym.pip, bars, result });
   } catch (e) {
     console.error('backtest', safeError(e));
     return fail(/credits|limit/i.test((e as Error).message) ? 'Our price data limit is busy. Please try again in a minute.' : 'The backtest could not run right now. Please try again.', 502);

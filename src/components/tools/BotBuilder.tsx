@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_RULES, ENTRY_GROUPS, ENTRY_LABEL, PRESETS, TIMEFRAME_LABEL, describeRules, sanitizeRules, type EntryKind, type Rules, type Timeframe } from '@/lib/trading/botspec';
 import { toMql5 } from '@/lib/trading/codegen-mql5';
 import { toPine } from '@/lib/trading/codegen-pine';
+import { BacktestReplay, BacktestReport, type BTData } from './BacktestShow';
 
-type BT = { trades: number; wins: number; losses: number; winRate: number; netPips: number; profitFactor: number | null; maxDrawdownPct: number; startEquity: number; endEquity: number; returnPct: number; from: string; to: string; candles: number; equity: number[]; lastTrades: { time: string; side: string; result: string; pips: number }[]; assumptions: string[] };
 
 const EXAMPLE = 'Trade EURUSD on the 15-minute chart. After a liquidity sweep, enter on the fair value gap, only during London and New York, and only with the 200 EMA trend. Stop loss 15 pips, take profit 30 pips. Risk 1% per trade.';
 
@@ -19,28 +19,17 @@ function download(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function Spark({ data }: { data: number[] }) {
-  if (data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const w = 600;
-  const h = 140;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / (max - min || 1)) * (h - 10) - 5}`).join(' ');
-  const up = data[data.length - 1] >= data[0];
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} role="img" aria-label={`Account balance went from $${data[0].toLocaleString()} to $${data[data.length - 1].toLocaleString()}`}>
-      <polyline points={pts} fill="none" stroke={up ? '#0B8A55' : '#C2410C'} strokeWidth="3" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function BotBuilder({ signedIn }: { signedIn: boolean }) {
   const [text, setText] = useState(EXAMPLE);
   const [rules, setRules] = useState<Rules | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
-  const [bt, setBt] = useState<{ symbol: string; result: BT } | null>(null);
+  const [bt, setBt] = useState<BTData | null>(null);
+  const [phase, setPhase] = useState<'replay' | 'report'>('replay');
+  const [run, setRun] = useState(0);
+  const rulesBox = useRef<HTMLDetailsElement>(null);
+  const testBox = useRef<HTMLDivElement>(null);
   const [btErr, setBtErr] = useState('');
   const [show, setShow] = useState<'' | 'mql5' | 'pine'>('');
   const [botId, setBotId] = useState<number | null>(null);
@@ -81,7 +70,10 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
       const r = await fetch('/api/bots/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || 'The backtest could not run.');
-      setBt({ symbol: d.symbol, result: d.result });
+      setBt(d as BTData);
+      setPhase('replay');
+      setRun((n) => n + 1);
+      requestAnimationFrame(() => testBox.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }));
     } catch (e) {
       setBtErr((e as Error).message);
     } finally {
@@ -167,7 +159,7 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
                 ))}
                 {questions.map((q) => <span key={q} style={{ fontSize: 15, color: '#6B3E00', background: '#FFE2B0', borderRadius: 12, padding: '10px 12px' }}>{q} You can change it below.</span>)}
               </div>
-              <details style={{ background: '#F6F1E9', borderRadius: 18, padding: '14px 18px' }}>
+              <details ref={rulesBox} style={{ background: '#F6F1E9', borderRadius: 18, padding: '14px 18px', scrollMarginTop: 20 }}>
                 <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Change the rules</summary>
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 14 }}>
                   <label className="field">Bot name<input className="input" value={rules.name} onChange={(ev) => upd({ name: ev.target.value })} /></label>
@@ -221,32 +213,18 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
       )}
 
       {rules && (
-        <div className="stack" style={{ gap: 16 }}>
+        <div ref={testBox} className="stack" style={{ gap: 16, scrollMarginTop: 20 }}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <span className="display" style={{ fontWeight: 700, fontSize: 26 }}>4 · Test it on past data</span>
             <button type="button" className="btn btn-amber" onClick={runBacktest} disabled={busy === 'bt'}>{busy === 'bt' ? <span className="spinner" aria-label="Testing" /> : 'Run backtest'} <span className="arr" aria-hidden="true">»</span></button>
           </div>
           {btErr && <div role="alert" className="note note-bad">{btErr}</div>}
-          {bt && (
-            <div className="stack" style={{ background: '#FFFFFF', color: '#0B1A36', borderRadius: 26, padding: 26, gap: 16 }}>
-              <span style={{ fontWeight: 700, fontSize: 18 }}>{bt.symbol} · {new Date(bt.result.from).toLocaleDateString('en-GB')} to {new Date(bt.result.to).toLocaleDateString('en-GB')} · {bt.result.candles.toLocaleString()} candles</span>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                {[
-                  ['Trades', String(bt.result.trades)],
-                  ['Win rate', `${bt.result.winRate}%`],
-                  ['Net pips', String(bt.result.netPips)],
-                  ['Profit factor', bt.result.profitFactor == null ? '—' : String(bt.result.profitFactor)],
-                  ['Max drawdown', `${bt.result.maxDrawdownPct}%`],
-                  ['Return', `${bt.result.returnPct}%`],
-                ].map(([k, v]) => <div key={k} style={{ background: '#F6F1E9', borderRadius: 14, padding: '12px 14px' }}><div style={{ fontSize: 13, color: '#4A5873' }}>{k}</div><div className="mono" style={{ fontSize: 22 }}>{v}</div></div>)}
-              </div>
-              <Spark data={bt.result.equity} />
-              <span style={{ fontSize: 15 }}>Balance: ${bt.result.startEquity.toLocaleString()} → ${bt.result.endEquity.toLocaleString()}</span>
-              {bt.result.trades < 30 && <div className="note note-warn">Only {bt.result.trades} trades. That is too few to trust. Test a longer period or another timeframe before relying on it.</div>}
-              <details><summary style={{ cursor: 'pointer', fontWeight: 600 }}>How this test works</summary><ul style={{ margin: '8px 0 0', paddingLeft: 20, color: '#3A4A66' }}>{bt.result.assumptions.map((a) => <li key={a}>{a}</li>)}</ul></details>
-              <span style={{ fontSize: 14, color: '#5A6780' }}>Past results do not guarantee future results. Always run the bot on a demo account for 2 to 4 weeks before trading real money.</span>
-            </div>
-          )}
+          {busy === 'bt' && <div className="bt-card" role="status" style={{ alignItems: 'center', padding: 40 }}><span className="spinner" /><span style={{ fontWeight: 600 }}>Loading years of real price history for {rules.symbol}…</span></div>}
+          {bt && busy !== 'bt' && (phase === 'replay'
+            ? <BacktestReplay key={run} data={bt} strategy={rules.name} onDone={() => setPhase('report')} />
+            : <BacktestReport data={bt} strategy={rules.name} timeframeLabel={TIMEFRAME_LABEL[rules.timeframe]} onReplay={() => { setRun((n) => n + 1); setPhase('replay'); }}
+                onChangeRules={() => { if (rulesBox.current) { rulesBox.current.open = true; rulesBox.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}
+                onDownload={() => download(`${fileBase}.mq5`, toMql5(rules))} />)}
         </div>
       )}
 

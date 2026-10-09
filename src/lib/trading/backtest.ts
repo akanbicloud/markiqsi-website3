@@ -18,6 +18,34 @@ export type BacktestResult = {
   equity: number[];
   lastTrades: { time: string; side: 'Buy' | 'Sell'; result: 'Win' | 'Loss' | 'Open'; pips: number }[];
   assumptions: string[];
+  /** Every closed trade, in order, for the replay and the report card. */
+  log: TradeLog[];
+  stats: {
+    avgWinMoney: number;
+    avgLossMoney: number;
+    bestTrade: TradeLog | null;
+    worstTrade: TradeLog | null;
+    longestWinStreak: number;
+    longestLossStreak: number;
+    drawdownFrom: string;
+    drawdownTo: string;
+    months: { month: string; pct: number; trades: number }[];
+  };
+};
+
+export type TradeLog = {
+  side: 'Buy' | 'Sell';
+  entryIdx: number;
+  exitIdx: number;
+  entry: number;
+  sl: number;
+  tp: number;
+  result: 'Win' | 'Loss';
+  pips: number;
+  money: number;
+  equityAfter: number;
+  openTime: string;
+  closeTime: string;
 };
 
 /**
@@ -37,6 +65,10 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
   let grossLossPips = 0;
   const curve: number[] = [start];
   const trades: BacktestResult['lastTrades'] = [];
+  const log: TradeLog[] = [];
+  let peakIdx = 0;
+  let ddFrom = '';
+  let ddTo = '';
   const perDay = new Map<string, number>();
   let dayKey = '';
   let dayStartEq = start;
@@ -71,15 +103,47 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
     const riskMoney = equity * (r.riskPercent / 100);
     const pips = result === 'Win' ? r.takeProfitPips : -r.stopLossPips;
     // spread is already inside the entry price, so the R multiple is exact
-    equity += result === 'Win' ? riskMoney * (r.takeProfitPips / r.stopLossPips) : -riskMoney;
+    const money = result === 'Win' ? riskMoney * (r.takeProfitPips / r.stopLossPips) : -riskMoney;
+    equity += money;
     if (result === 'Win') { wins++; grossWinPips += r.takeProfitPips; } else { losses++; grossLossPips += r.stopLossPips; }
-    peak = Math.max(peak, equity);
-    maxDd = Math.max(maxDd, (peak - equity) / peak);
+    if (equity > peak) { peak = equity; peakIdx = exitIdx; }
+    const dd = (peak - equity) / peak;
+    if (dd > maxDd) { maxDd = dd; ddFrom = new Date(c[peakIdx].t).toISOString(); ddTo = new Date(c[exitIdx].t).toISOString(); }
+    log.push({ side, entryIdx: entryBar, exitIdx, entry, sl, tp, result, pips, money: Math.round(money * 100) / 100, equityAfter: Math.round(equity * 100) / 100,
+      openTime: new Date(c[entryBar].t).toISOString(), closeTime: new Date(c[exitIdx].t).toISOString() });
     curve.push(Math.round(equity * 100) / 100);
     trades.push({ time: new Date(c[entryBar].t).toISOString(), side, result, pips });
     i = exitIdx + 1;
   }
   const n = wins + losses;
+
+  // ---- extra stats for the report card (all from the trades above, nothing estimated)
+  let ws = 0, ls = 0, bestW = 0, bestL = 0;
+  for (const t of log) {
+    if (t.result === 'Win') { ws++; ls = 0; } else { ls++; ws = 0; }
+    bestW = Math.max(bestW, ws);
+    bestL = Math.max(bestL, ls);
+  }
+  const winsL = log.filter((t) => t.result === 'Win');
+  const lossL = log.filter((t) => t.result === 'Loss');
+  const avg = (a: TradeLog[]) => (a.length ? Math.round((a.reduce((x, t) => x + t.money, 0) / a.length) * 100) / 100 : 0);
+  const months: { month: string; pct: number; trades: number }[] = [];
+  if (c.length) {
+    const first = new Date(c[0].t);
+    const last = new Date(c[c.length - 1].t);
+    let eqStart = start;
+    let k = 0;
+    for (let y = first.getUTCFullYear(), m = first.getUTCMonth(); y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth()); m === 11 ? (y++, m = 0) : m++) {
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      let eqEnd = eqStart;
+      let cnt = 0;
+      while (k < log.length && log[k].closeTime.slice(0, 7) === key) { eqEnd = log[k].equityAfter; cnt++; k++; }
+      months.push({ month: key, pct: Math.round(((eqEnd - eqStart) / eqStart) * 1000) / 10, trades: cnt });
+      eqStart = eqEnd;
+    }
+  }
+  const byMoney = [...log].sort((a, b) => b.money - a.money || a.exitIdx - b.exitIdx);
+
   const step = Math.max(1, Math.ceil(curve.length / 80));
   return {
     trades: n,
@@ -104,5 +168,17 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
       'If the stop and target are hit in the same candle, we count it as a loss.',
       'No slippage, swaps or commissions beyond the spread.',
     ],
+    log,
+    stats: {
+      avgWinMoney: avg(winsL),
+      avgLossMoney: avg(lossL),
+      bestTrade: byMoney[0] && byMoney[0].money > 0 ? byMoney[0] : null,
+      worstTrade: byMoney.length && byMoney[byMoney.length - 1].money < 0 ? byMoney[byMoney.length - 1] : null,
+      longestWinStreak: bestW,
+      longestLossStreak: bestL,
+      drawdownFrom: ddFrom,
+      drawdownTo: ddTo,
+      months,
+    },
   };
 }
