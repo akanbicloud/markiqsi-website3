@@ -11,5 +11,5 @@ export const SITE = {
   x: 'https://x.com/MarkIQSI3',
   // Add these when you have them:
   facebook: '',
-  telegram: process.env.NEXT_PUBLIC_TELEGRAM_URL || '',
+  telegram: process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/+-_wHPDXxlC8yZjNk',
 };
