@@ -10,7 +10,8 @@ export async function gemini(system: string, user: string, opts: { json?: boolea
       contents: [{ role: 'user', parts: [{ text: user }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: opts.maxTokens || 1400,
+        // Gemini 3 models think before answering and that counts against this limit, so leave room.
+        maxOutputTokens: Math.max((opts.maxTokens || 1400) * 4, 8192),
         ...(opts.json ? { responseMimeType: 'application/json' } : {}),
       },
     }),
@@ -18,8 +19,8 @@ export async function gemini(system: string, user: string, opts: { json?: boolea
   });
   if (!r.ok) throw new Error(`Gemini error ${r.status}`);
   const d = await r.json();
-  const text: string = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
-  if (!text) throw new Error('Empty answer');
+  const text: string = d?.candidates?.[0]?.content?.parts?.filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || '').join('') || '';
+  if (!text) throw new Error(`Empty answer (${d?.candidates?.[0]?.finishReason || 'unknown'})`);
   return text;
 }
 
