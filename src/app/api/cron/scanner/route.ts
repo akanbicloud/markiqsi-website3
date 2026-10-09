@@ -4,6 +4,7 @@ import { db, hasDb } from '@/lib/db';
 import { SYMBOLS, TIMEFRAMES, type TF } from '@/lib/trading/symbols';
 import { fail, json } from '@/lib/http';
 import { refreshPrices } from '@/lib/trading/prices';
+import { refreshMarketFeeds } from '@/lib/marketfeed';
 import { scanAll, sendEventReminders, sendScanAlerts } from '@/lib/trading/scanner';
 
 export const maxDuration = 60;
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
   if (!hasDb()) return fail('Database not connected', 503);
   const out: Record<string, unknown> = {};
   try {
+    await refreshMarketFeeds(await db(), 15000).catch(() => null);
     if (process.env.TWELVE_DATA_API_KEY) {
       out.prices = await refreshPrices(4);
       // fast timeframes only for markets that someone has a Telegram alert on

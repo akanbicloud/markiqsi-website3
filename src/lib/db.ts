@@ -202,6 +202,12 @@ const SCHEMA = [
   )`,
 
   // ---------- Market data tables (the MARKET BOT writes these, the website reads them) ----------
+  `CREATE TABLE IF NOT EXISTS mq_feed_state (
+    key TEXT PRIMARY KEY,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ok BOOLEAN,
+    note TEXT
+  )`,
   `CREATE TABLE IF NOT EXISTS mi_events (
     id TEXT PRIMARY KEY,
     country TEXT NOT NULL,

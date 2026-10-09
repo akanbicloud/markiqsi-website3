@@ -1,5 +1,6 @@
 import { safeError } from '@/lib/http';
 import { db, hasDb } from './db';
+import { refreshMarketFeeds } from './marketfeed';
 
 export type EventRow = { id: string; country: string; currency: string; name: string; impact: string; scheduled_at: string; what: string | null; why: string | null; markets: string[]; forecast: string | null; previous: string | null; source: string | null };
 export type ResultRow = { event_id: string; country: string; name: string; actual: string; forecast: string | null; previous: string | null; verdict: string | null; surprise_score: number | null; simply: string | null; source: string; source_url: string | null; released_at: string };
@@ -15,6 +16,8 @@ export async function loadMarketData(): Promise<MarketData> {
   if (!hasDb()) return { connected: false, events: [], results: [], news: [], rates: [], live: null };
   try {
     const q = await db();
+    // Keep the page fresh on its own: refresh the calendar (every 30 min) and news (every 15 min) when stale.
+    await refreshMarketFeeds(q).catch((e) => console.error('market feeds', safeError(e)));
     const [events, results, news, rates, live] = await Promise.all([
       q`SELECT * FROM mi_events WHERE scheduled_at >= now() - interval '12 hours' AND scheduled_at < now() + interval '8 days' ORDER BY scheduled_at LIMIT 200`,
       q`SELECT * FROM mi_results ORDER BY released_at DESC LIMIT 8`,
