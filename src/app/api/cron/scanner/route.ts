@@ -1,5 +1,5 @@
 import { safeError } from '@/lib/http';
-import { timingSafeEqual } from 'crypto';
+import { botAuthorized } from '@/lib/botauth';
 import { db, hasDb } from '@/lib/db';
 import { SYMBOLS, TIMEFRAMES, type TF } from '@/lib/trading/symbols';
 import { fail, json } from '@/lib/http';
@@ -8,19 +8,9 @@ import { scanAll, sendEventReminders, sendScanAlerts } from '@/lib/trading/scann
 
 export const maxDuration = 60;
 
-function authorized(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const u = new URL(req.url);
-  const given = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || u.searchParams.get('key') || '';
-  const a = Buffer.from(given);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 /** The market bot calls this every 2 minutes: GET /api/cron/scanner with header "Authorization: Bearer <CRON_SECRET>". */
 export async function GET(req: Request) {
-  if (!authorized(req)) return fail('Not allowed', 401);
+  if (!botAuthorized(req)) return fail('Not allowed', 401);
   if (!hasDb()) return fail('Database not connected', 503);
   const out: Record<string, unknown> = {};
   try {
