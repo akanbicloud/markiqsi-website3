@@ -1,7 +1,7 @@
 import { safeError } from '@/lib/http';
 import { db, hasDb } from './db';
 import { after } from 'next/server';
-import { refreshMarketFeeds } from './marketfeed';
+import { ensureRates, refreshMarketFeeds } from './marketfeed';
 
 export type EventRow = { id: string; country: string; currency: string; name: string; impact: string; scheduled_at: string; what: string | null; why: string | null; markets: string[]; forecast: string | null; previous: string | null; source: string | null };
 export type ResultRow = { event_id: string; country: string; name: string; actual: string; forecast: string | null; previous: string | null; verdict: string | null; surprise_score: number | null; simply: string | null; source: string; source_url: string | null; released_at: string };
@@ -20,7 +20,8 @@ export async function loadMarketData(): Promise<MarketData> {
     // Keep the page fresh on its own: refresh the calendar (every 30 min) and news (every 15 min) when stale.
     // Normally this runs after the page is sent; only a completely empty page waits for the first load.
     const refresh = () => refreshMarketFeeds(q).catch((e) => console.error('market feeds', safeError(e)));
-    const have = (await q`SELECT (SELECT count(*) FROM mi_events)::int AS e, (SELECT count(*) FROM mi_news)::int AS n`) as { e: number; n: number }[];
+    const have = (await q`SELECT (SELECT count(*) FROM mi_events)::int AS e, (SELECT count(*) FROM mi_news)::int AS n, (SELECT count(*) FROM mi_rates)::int AS r`) as { e: number; n: number; r: number }[];
+    if (!have[0]?.r) await ensureRates(q).catch((e) => console.error('rates seed', safeError(e)));
     if (!have[0]?.e || !have[0]?.n) await Promise.race([refresh(), new Promise((r) => setTimeout(r, 15000))]);
     else after(refresh);
     const [events, results, news, rates, live] = await Promise.all([

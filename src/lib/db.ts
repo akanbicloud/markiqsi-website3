@@ -208,6 +208,8 @@ const SCHEMA = [
     ok BOOLEAN,
     note TEXT
   )`,
+  `ALTER TABLE mq_feed_state ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ`,
+  `ALTER TABLE mq_feed_state ADD COLUMN IF NOT EXISTS last_success TIMESTAMPTZ`,
   `CREATE TABLE IF NOT EXISTS mi_events (
     id TEXT PRIMARY KEY,
     country TEXT NOT NULL,

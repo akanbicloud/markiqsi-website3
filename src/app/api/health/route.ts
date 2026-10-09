@@ -43,7 +43,7 @@ export async function GET() {
           await ensureSchema();
           out.database = schemaWarnings.length ? 'OK (with warnings)' : 'OK';
           try {
-            const feeds = (await sql()`SELECT key, fetched_at, ok, note FROM mq_feed_state ORDER BY key`) as { key: string; fetched_at: string; ok: boolean | null; note: string | null }[];
+            const feeds = (await sql()`SELECT key, COALESCE(last_success, fetched_at) AS fetched_at, ok, note FROM mq_feed_state ORDER BY key`) as { key: string; fetched_at: string; ok: boolean | null; note: string | null }[];
             const counts = (await sql()`SELECT (SELECT count(*) FROM mi_events WHERE scheduled_at > now()) AS events, (SELECT count(*) FROM mi_news) AS news, (SELECT count(*) FROM mi_rates) AS rates, (SELECT count(*) FROM mi_results) AS results`) as Record<string, string>[];
             out.marketFeeds = { rows: counts[0], feeds: feeds.map((f) => `${f.key}: ${f.ok === false ? 'FAILED' : f.ok ? 'OK' : 'pending'} at ${new Date(f.fetched_at).toISOString().slice(0, 16)} UTC${f.note ? ` (${clean(f.note)})` : ''}`) };
           } catch { /* table may not exist yet */ }

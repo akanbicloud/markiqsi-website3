@@ -210,26 +210,35 @@ async function seedRates(q: Sql) {
     ON CONFLICT (bank) DO NOTHING`;
 }
 
-/** Atomically claims a refresh slot so many visitors never trigger many downloads. */
+/**
+ * Claims a refresh slot so many visitors never trigger many downloads.
+ * A refresh is due when the last SUCCESS is older than `everyMinutes`. A claim holds a short lock
+ * (2 minutes): if that run is cut off, the lock simply expires and the next visitor retries.
+ */
 async function claim(q: Sql, key: string, everyMinutes: number) {
   const rows = (await q`
-    INSERT INTO mq_feed_state (key, fetched_at) VALUES (${key}, now())
-    ON CONFLICT (key) DO UPDATE SET fetched_at = now()
-    WHERE mq_feed_state.fetched_at < now() - make_interval(mins => ${everyMinutes})
+    INSERT INTO mq_feed_state (key, fetched_at, locked_until) VALUES (${key}, now(), now() + interval '2 minutes')
+    ON CONFLICT (key) DO UPDATE SET fetched_at = now(), locked_until = now() + interval '2 minutes'
+    WHERE (mq_feed_state.locked_until IS NULL OR mq_feed_state.locked_until < now())
+      AND (mq_feed_state.last_success IS NULL OR mq_feed_state.last_success < now() - make_interval(mins => ${everyMinutes}::int))
     RETURNING key`) as unknown[];
   return rows.length > 0;
 }
 
 async function note(q: Sql, key: string, ok: boolean, msg: string, retryMinutes?: number) {
-  // On failure, allow a retry sooner than the normal interval.
-  if (!ok && retryMinutes != null) await q`UPDATE mq_feed_state SET ok = false, note = ${msg}, fetched_at = now() - make_interval(mins => ${retryMinutes}) WHERE key = ${key}`;
-  else await q`UPDATE mq_feed_state SET ok = ${ok}, note = ${msg} WHERE key = ${key}`;
+  if (ok) await q`UPDATE mq_feed_state SET ok = true, note = ${msg}, last_success = now(), locked_until = NULL WHERE key = ${key}`;
+  // On failure, keep it stale and lock it for a few minutes, then the next visitor retries.
+  else await q`UPDATE mq_feed_state SET ok = false, note = ${msg}, locked_until = now() + make_interval(mins => ${retryMinutes ?? 5}::int) WHERE key = ${key}`;
+}
+
+/** Writes the verified starting rates for any bank that has no row yet (cheap, safe to repeat). */
+export async function ensureRates(q: Sql) {
+  await seedRates(q);
 }
 
 export async function refreshCalendar(q: Sql, force = false) {
   if (!force && !(await claim(q, 'calendar', 30))) return null;
   try {
-    await seedRates(q);
     const items: FFItem[] = [];
     for (const u of CAL_URLS) {
       try {
@@ -244,7 +253,7 @@ export async function refreshCalendar(q: Sql, force = false) {
     return res;
   } catch (e) {
     console.error('calendar feed', safeError(e));
-    await note(q, 'calendar', false, safeError(e), 25);
+    await note(q, 'calendar', false, safeError(e), 5);
     return null;
   }
 }
@@ -256,11 +265,11 @@ export async function refreshNews(q: Sql, force = false) {
   const failed = results.map((r, i) => (r.status === 'rejected' ? NEWS_FEEDS[i][0] : null)).filter(Boolean);
   try {
     const res = news.length ? await saveMarketData(q, { news }) : { saved: { news: 0 }, skipped: {} };
-    await note(q, 'news', news.length > 0, `saved ${res.saved.news ?? 0}${failed.length ? `; failed: ${failed.join(', ')}` : ''}`, news.length ? undefined : 10);
+    await note(q, 'news', news.length > 0, `saved ${res.saved.news ?? 0}${failed.length ? `; failed: ${failed.join(', ')}` : ''}`, 5);
     return res;
   } catch (e) {
     console.error('news feed', safeError(e));
-    await note(q, 'news', false, safeError(e), 10);
+    await note(q, 'news', false, safeError(e), 5);
     return null;
   }
 }
