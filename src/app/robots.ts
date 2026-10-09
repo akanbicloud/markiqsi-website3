@@ -10,7 +10,7 @@ const PRIVATE = ['/api/', '/account', '/welcome', '/auth/'];
 export default function robots(): MetadataRoute.Robots {
   const ai = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'anthropic-ai', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot', 'Applebot-Extended', 'Bingbot', 'CCBot', 'meta-externalagent', 'DuckAssistBot', 'YouBot'];
   return {
-    rules: [{ userAgent: '*', allow: '/', disallow: PRIVATE }, ...ai.map((a) => ({ userAgent: a, allow: '/', disallow: PRIVATE }))],
+    rules: [{ userAgent: '*', allow: ['/', '/api/health'], disallow: PRIVATE }, ...ai.map((a) => ({ userAgent: a, allow: ['/', '/api/health'], disallow: PRIVATE }))],
     sitemap: `${SITE.url}/sitemap.xml`,
     host: SITE.url,
   };
