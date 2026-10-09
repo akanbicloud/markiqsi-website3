@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   if (!hasDb()) return fail('Database not connected', 503);
   const out: Record<string, unknown> = {};
   try {
-    await refreshMarketFeeds(await db(), 15000).catch(() => null);
+    await refreshMarketFeeds(await db()).catch(() => null);
     if (process.env.TWELVE_DATA_API_KEY) {
       out.prices = await refreshPrices(4);
       // fast timeframes only for markets that someone has a Telegram alert on

@@ -29,18 +29,25 @@ export async function saveMarketData(q: Sql, b: Obj): Promise<{ saved: Record<st
   const skipped: Record<string, number> = {};
   const skip = (k: string) => { skipped[k] = (skipped[k] || 0) + 1; };
 
-  // ---- events (upcoming calendar)
-  saved.events = 0;
+  // ---- events (upcoming calendar): validated, de-duplicated, then saved in ONE database call
+  const evRows = new Map<string, Obj>();
   for (const e of list('events')) {
     const id = s(e.id, 120), country = s(e.country, 20), name = s(e.name, 160), impact = s(e.impact, 10), at = isoTime(e.scheduled_at);
     if (!id || !COUNTRIES.includes(country) || !name || !['High', 'Medium'].includes(impact) || !at || !s(e.currency, 5)) { skip('events'); continue; }
     const markets = (Array.isArray(e.markets) ? e.markets : []).map((m) => s(m, 20)).filter((m) => MARKETS.includes(m));
+    evRows.set(id, { id, country, currency: s(e.currency, 5), name, impact, scheduled_at: at, what: opt(e.what, 400), why: opt(e.why, 400),
+      markets, forecast: opt(e.forecast, 40), previous: opt(e.previous, 40), source: opt(e.source, 120) });
+  }
+  saved.events = evRows.size;
+  if (evRows.size) {
     await q`INSERT INTO mi_events (id, country, currency, name, impact, scheduled_at, what, why, markets, forecast, previous, source, updated_at)
-      VALUES (${id}, ${country}, ${s(e.currency, 5)}, ${name}, ${impact}, ${at}, ${opt(e.what, 400)}, ${opt(e.why, 400)}, ${markets}, ${opt(e.forecast, 40)}, ${opt(e.previous, 40)}, ${opt(e.source, 120)}, now())
+      SELECT x.id, x.country, x.currency, x.name, x.impact, x.scheduled_at, x.what, x.why,
+             ARRAY(SELECT jsonb_array_elements_text(x.markets)), x.forecast, x.previous, x.source, now()
+      FROM jsonb_to_recordset(${JSON.stringify([...evRows.values()])}::jsonb) AS x(id text, country text, currency text, name text, impact text,
+        scheduled_at timestamptz, what text, why text, markets jsonb, forecast text, previous text, source text)
       ON CONFLICT (id) DO UPDATE SET country = EXCLUDED.country, currency = EXCLUDED.currency, name = EXCLUDED.name, impact = EXCLUDED.impact,
         scheduled_at = EXCLUDED.scheduled_at, what = EXCLUDED.what, why = EXCLUDED.why, markets = EXCLUDED.markets,
         forecast = EXCLUDED.forecast, previous = EXCLUDED.previous, source = EXCLUDED.source, updated_at = now()`;
-    saved.events++;
   }
 
   // ---- results (only real released numbers)
@@ -57,16 +64,20 @@ export async function saveMarketData(q: Sql, b: Obj): Promise<{ saved: Record<st
     saved.results++;
   }
 
-  // ---- news (keep 30 days)
-  saved.news = 0;
+  // ---- news (keep 30 days): ONE database call
+  const newsRows = new Map<string, Obj>();
   for (const n of list('news')) {
     const id = s(n.id, 120), category = s(n.category, 20), title = s(n.title, 300), bodyText = s(n.body, 700), at = isoTime(n.published_at);
     if (!id || !CATEGORIES.includes(category) || !title || !bodyText || !at || !url(n.source_url)) { skip('news'); continue; }
+    newsRows.set(id, { id, category, tag: opt(n.tag, 40), title, body: bodyText, reaction: opt(n.reaction, 300), source: opt(n.source, 80), source_url: url(n.source_url), published_at: at });
+  }
+  saved.news = newsRows.size;
+  if (newsRows.size) {
     await q`INSERT INTO mi_news (id, category, tag, title, body, reaction, source, source_url, published_at)
-      VALUES (${id}, ${category}, ${opt(n.tag, 40)}, ${title}, ${bodyText}, ${opt(n.reaction, 300)}, ${opt(n.source, 80)}, ${url(n.source_url)}, ${at})
+      SELECT * FROM jsonb_to_recordset(${JSON.stringify([...newsRows.values()])}::jsonb) AS x(id text, category text, tag text, title text,
+        body text, reaction text, source text, source_url text, published_at timestamptz)
       ON CONFLICT (id) DO UPDATE SET category = EXCLUDED.category, tag = EXCLUDED.tag, title = EXCLUDED.title, body = EXCLUDED.body,
         reaction = COALESCE(EXCLUDED.reaction, mi_news.reaction), source = EXCLUDED.source, source_url = EXCLUDED.source_url, published_at = EXCLUDED.published_at`;
-    saved.news++;
   }
   if (saved.news) await q`DELETE FROM mi_news WHERE published_at < now() - interval '30 days'`;
 

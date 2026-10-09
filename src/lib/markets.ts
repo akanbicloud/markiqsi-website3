@@ -1,5 +1,6 @@
 import { safeError } from '@/lib/http';
 import { db, hasDb } from './db';
+import { after } from 'next/server';
 import { refreshMarketFeeds } from './marketfeed';
 
 export type EventRow = { id: string; country: string; currency: string; name: string; impact: string; scheduled_at: string; what: string | null; why: string | null; markets: string[]; forecast: string | null; previous: string | null; source: string | null };
@@ -17,7 +18,11 @@ export async function loadMarketData(): Promise<MarketData> {
   try {
     const q = await db();
     // Keep the page fresh on its own: refresh the calendar (every 30 min) and news (every 15 min) when stale.
-    await refreshMarketFeeds(q).catch((e) => console.error('market feeds', safeError(e)));
+    // Normally this runs after the page is sent; only a completely empty page waits for the first load.
+    const refresh = () => refreshMarketFeeds(q).catch((e) => console.error('market feeds', safeError(e)));
+    const have = (await q`SELECT (SELECT count(*) FROM mi_events)::int AS e, (SELECT count(*) FROM mi_news)::int AS n`) as { e: number; n: number }[];
+    if (!have[0]?.e || !have[0]?.n) await Promise.race([refresh(), new Promise((r) => setTimeout(r, 15000))]);
+    else after(refresh);
     const [events, results, news, rates, live] = await Promise.all([
       q`SELECT * FROM mi_events WHERE scheduled_at >= now() - interval '12 hours' AND scheduled_at < now() + interval '8 days' ORDER BY scheduled_at LIMIT 200`,
       q`SELECT * FROM mi_results ORDER BY released_at DESC LIMIT 8`,

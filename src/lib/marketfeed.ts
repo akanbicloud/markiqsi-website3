@@ -47,7 +47,7 @@ const EXPLAIN: [string[], string, string][] = [
 
 const RATE_EVENTS: [string, string[], string, string][] = [
   ['US', ['federal funds rate'], 'Federal Reserve', 'https://www.federalreserve.gov/monetarypolicy/openmarket.htm'],
-  ['Eurozone', ['deposit facility rate', 'main refinancing rate'], 'European Central Bank', 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html'],
+  ['Eurozone', ['deposit facility rate'], 'European Central Bank', 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html'],
   ['UK', ['official bank rate', 'bank rate'], 'Bank of England', 'https://www.bankofengland.co.uk/monetary-policy/the-interest-rate-bank-rate'],
   ['Japan', ['boj policy rate', 'policy rate'], 'Bank of Japan', 'https://www.boj.or.jp/en/mopo/index.htm'],
   ['Canada', ['overnight rate'], 'Bank of Canada', 'https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/'],
@@ -187,6 +187,29 @@ async function get(url: string, ms = 6000) {
 
 // ---------------------------------------------------------------- refresh
 
+/*
+ * Starting values for the rates table, checked on each central bank's own page on 9 October 2026
+ * (ECB, Bank of Canada and PBoC confirmed from reputable reports). They are only written when a bank has
+ * no row yet; after that, rate-decision events in the calendar (and the bot) keep them current.
+ */
+export const SEED_RATES: Obj[] = [
+  { bank: 'Federal Reserve', currency: 'USD', rate: '3.75–4.00%', last_change: 'Raised 0.25%', last_change_date: '2026-09-16', next_meeting: '2026-10-28', source_url: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm' },
+  { bank: 'European Central Bank', currency: 'EUR', rate: '2.50%', last_change: 'Raised 0.25%', last_change_date: '2026-09-10', next_meeting: '2026-10-29', source_url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html' },
+  { bank: 'Bank of England', currency: 'GBP', rate: '3.75%', last_change: 'Hold', last_change_date: '2026-09-17', next_meeting: '2026-11-05', source_url: 'https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/september-2026' },
+  { bank: 'Bank of Japan', currency: 'JPY', rate: '1.25%', last_change: 'Raised', last_change_date: '2026-09-18', next_meeting: '2026-10-30', source_url: 'https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260918a.pdf' },
+  { bank: 'Bank of Canada', currency: 'CAD', rate: '2.25%', last_change: 'Hold', last_change_date: '2026-09-02', next_meeting: null, source_url: 'https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/' },
+  { bank: 'Reserve Bank of Australia', currency: 'AUD', rate: '4.60%', last_change: 'Raised 0.25%', last_change_date: '2026-09-29', next_meeting: null, source_url: 'https://www.rba.gov.au/media-releases/2026/mr-26-27.html' },
+  { bank: "People's Bank of China", currency: 'CNY', rate: '3.00%', last_change: 'Hold', last_change_date: '2026-09-21', next_meeting: '2026-10-20', source_url: 'http://www.pbc.gov.cn/en/3688006/index.html' },
+];
+
+async function seedRates(q: Sql) {
+  await q`INSERT INTO mi_rates (bank, currency, rate, last_change, last_change_date, next_meeting, source_url, updated_at)
+    SELECT x.bank, x.currency, x.rate, x.last_change, x.last_change_date, x.next_meeting, x.source_url, now()
+    FROM jsonb_to_recordset(${JSON.stringify(SEED_RATES)}::jsonb) AS x(bank text, currency text, rate text, last_change text,
+      last_change_date date, next_meeting date, source_url text)
+    ON CONFLICT (bank) DO NOTHING`;
+}
+
 /** Atomically claims a refresh slot so many visitors never trigger many downloads. */
 async function claim(q: Sql, key: string, everyMinutes: number) {
   const rows = (await q`
@@ -206,6 +229,7 @@ async function note(q: Sql, key: string, ok: boolean, msg: string, retryMinutes?
 export async function refreshCalendar(q: Sql, force = false) {
   if (!force && !(await claim(q, 'calendar', 30))) return null;
   try {
+    await seedRates(q);
     const items: FFItem[] = [];
     for (const u of CAL_URLS) {
       try {
@@ -241,8 +265,7 @@ export async function refreshNews(q: Sql, force = false) {
   }
 }
 
-/** Refreshes whatever is stale, but never makes a page wait longer than `budgetMs`. */
-export async function refreshMarketFeeds(q: Sql, budgetMs = 7000) {
-  const work = Promise.allSettled([refreshCalendar(q), refreshNews(q)]);
-  await Promise.race([work, new Promise((r) => setTimeout(r, budgetMs))]);
+/** Refreshes whatever is stale. Call it inside next/server after() so it can finish after the page is sent. */
+export async function refreshMarketFeeds(q: Sql) {
+  await Promise.allSettled([refreshCalendar(q), refreshNews(q)]);
 }

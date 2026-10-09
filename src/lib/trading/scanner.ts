@@ -110,7 +110,7 @@ export async function fundamentalsContext(): Promise<Context> {
   }
   const rate = new Map<string, number>();
   for (const r of rates as { currency: string; rate: string }[]) {
-    const n = parseFloat(String(r.rate).replace(/[^0-9.\-]/g, ''));
+    const n = parseFloat((String(r.rate).match(/-?\d+(?:\.\d+)?/) || [''])[0]); // first number, so '3.75–4.00%' reads 3.75
     if (Number.isFinite(n)) rate.set(r.currency, n);
   }
   const bias = new Map<string, string>();

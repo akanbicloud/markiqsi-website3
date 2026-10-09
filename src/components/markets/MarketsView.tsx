@@ -201,7 +201,11 @@ export function MarketsView({ data, signedIn, telegramUrl }: { data: MarketData;
                       <td>{r.currency}</td>
                       <td className="mono" style={{ fontSize: 19 }}>{r.rate}</td>
                       <td><span className={`chip ${/cut/i.test(r.last_change || '') ? 'chip-bull' : /rais|hike/i.test(r.last_change || '') ? 'chip-bear' : ''}`}>{r.last_change || 'Hold'}</span>{r.last_change_date && <span className="faint small"> {fmtDay(r.last_change_date)}</span>}</td>
-                      <td className="mono">{fmtDay(r.next_meeting)}</td>
+                      <td className="mono" suppressHydrationWarning>
+                        {r.next_meeting && r.next_meeting.slice(0, 10) < new Date().toISOString().slice(0, 10)
+                          ? (r.source_url ? <a href={r.source_url} target="_blank" rel="noopener noreferrer">Decision out · see source</a> : 'Decision out')
+                          : fmtDay(r.next_meeting)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
