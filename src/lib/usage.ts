@@ -21,6 +21,22 @@ function limitFor(feature: string, signedIn: boolean) {
   return raw && Number.isFinite(n) && n >= 0 ? n : signedIn ? d.user : d.anon;
 }
 
+function whoFor(req: Request, s: { uid: number } | null) {
+  return s ? `u:${s.uid}` : `ip:${sha256(clientIp(req) + (process.env.AUTH_SECRET || '')).slice(0, 32)}`;
+}
+
+/** Gives a use back when the feature failed on our side, so people are not charged for errors. */
+export async function refundQuota(req: Request, feature: string) {
+  if (!hasDb()) return;
+  try {
+    const s = await getSession().catch(() => null);
+    const q = await db();
+    await q`UPDATE mq_usage SET count = GREATEST(0, count - 1) WHERE who = ${whoFor(req, s)} AND feature = ${feature} AND day = CURRENT_DATE`;
+  } catch {
+    // never let a refund error hide the real error
+  }
+}
+
 export type UsageResult = { ok: boolean; remaining: number; limit: number; signedIn: boolean };
 
 /** Counts one use and says whether it is allowed. Without a database it always allows (local dev). */
@@ -29,7 +45,7 @@ export async function takeQuota(req: Request, feature: string): Promise<UsageRes
   const signedIn = !!s;
   const limit = limitFor(feature, signedIn);
   if (!hasDb()) return { ok: true, remaining: limit, limit, signedIn };
-  const who = s ? `u:${s.uid}` : `ip:${sha256(clientIp(req) + (process.env.AUTH_SECRET || '')).slice(0, 32)}`;
+  const who = whoFor(req, s);
   const q = await db();
   const rows = (await q`INSERT INTO mq_usage (who, feature, day, count) VALUES (${who}, ${feature}, CURRENT_DATE, 1)
     ON CONFLICT (who, feature, day) DO UPDATE SET count = mq_usage.count + 1 RETURNING count`) as { count: number }[];

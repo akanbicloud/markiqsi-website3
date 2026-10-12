@@ -18,7 +18,11 @@ export async function gemini(system: string, user: string, opts: { json?: boolea
     }),
     signal: AbortSignal.timeout(opts.timeoutMs || 30000),
   });
-  if (!r.ok) throw new Error(`Gemini error ${r.status}`);
+  if (!r.ok) {
+    // Google's message says what is wrong (e.g. unknown model, image too large, quota), without secrets.
+    const why = await r.json().then((x) => String(x?.error?.message || '')).catch(() => '');
+    throw new Error(`Gemini error ${r.status}${why ? `: ${why.slice(0, 160)}` : ''} (model ${model})`);
+  }
   const d = await r.json();
   const text: string = d?.candidates?.[0]?.content?.parts?.filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || '').join('') || '';
   if (!text) throw new Error(`Empty answer (${d?.candidates?.[0]?.finishReason || 'unknown'})`);
