@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { LogoMark } from './Logo';
 
 const NAV = [
+  { href: '/#learn', label: 'Learn', match: '/learn' },
   { href: '/courses', label: 'Courses', match: '/courses' },
   { href: '/markets', label: 'Markets', match: '/markets' },
   { href: '/tools', label: 'Tools', match: '/tools' },
