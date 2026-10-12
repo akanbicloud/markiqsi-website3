@@ -56,6 +56,11 @@ export const FAQS: { topic: string; q: string; a: string }[] = [
   },
   {
     "topic": "Tools & bots",
+    "q": "Can MarkIQ SI analyse my chart screenshot?",
+    "a": "Yes. Open Chart Analysis in Tools, add a screenshot and choose the market and timeframe. We read what you drew, check the real price data for structure and key levels, add the news and interest-rate picture, and show possible bullish and bearish scenarios with the level that would prove each one wrong. It is education, not a signal or financial advice."
+  },
+  {
+    "topic": "Tools & bots",
     "q": "Will my bot make money?",
     "a": "No one can promise that, and we never will. A bot follows your rules exactly, including the losing ones. That is why every bot includes safety limits and should be tested on a demo account first."
   },

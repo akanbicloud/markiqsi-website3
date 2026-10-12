@@ -81,3 +81,16 @@ test('bot strategy Pine still builds after sharing the core', () => {
   assert.match(pine, /strategy\.entry\("Buy"/);
   assert.match(pine, /finalSig = /);
 });
+
+test('market structure summary uses only real prices', async () => {
+  const { analyzeStructure } = await import('../src/lib/trading/structure');
+  const c = market(600);
+  const s = analyzeStructure(c, 5)!;
+  assert.ok(s);
+  assert.ok(['up', 'down', 'sideways'].includes(s.trend.bias));
+  for (const p of s.resistance) assert.ok(p > s.lastClose);
+  for (const p of s.support) assert.ok(p < s.lastClose);
+  const prices = new Set(c.flatMap((x) => [x.h, x.l].map((v) => Number(v.toFixed(5)))));
+  for (const p of [...s.resistance, ...s.support]) assert.ok(prices.has(p), 'levels come from real candle highs/lows');
+  assert.equal(analyzeStructure(c.slice(0, 50), 5), null);
+});

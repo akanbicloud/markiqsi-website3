@@ -8,12 +8,14 @@ import { MarketScanner } from './MarketScanner';
 import { Charts } from './Charts';
 import { BotBuilder } from './BotBuilder';
 import { IndicatorBuilder } from './IndicatorBuilder';
+import { ChartAnalyzer } from './ChartAnalyzer';
 import { Journal } from './Journal';
 
 const TOOLS = [
   { key: 'risk', title: 'Risk Calculator', text: 'Know your trade size before you click buy or sell.', bg: '#1A5FD0', fg: '#FFFFFF' },
   { key: 'prop', title: 'Prop Challenge Tracker', text: 'Track your challenge: profit target, daily loss and drawdown left.', bg: '#FF7A45', fg: '#0B1A36' },
   { key: 'scan', title: 'Market Scanner', text: 'Scan many markets for supply and demand, candle patterns, ICT and SMC setups. Get Telegram alerts.', bg: '#7DB8FF', fg: '#0B1A36' },
+  { key: 'analyse', title: 'Chart Analysis', text: 'Upload a chart screenshot. Get the structure, key levels, news behind it and possible scenarios.', bg: '#0EA5A4', fg: '#0B1A36' },
   { key: 'charts', title: 'Charts', text: 'Real charts with years of history, indicators and drawing tools.', bg: '#3DDC97', fg: '#0B1A36' },
   { key: 'bot', title: 'Bot Builder', text: 'Turn your strategy into a robot you can test, then run on MT5.', bg: '#0B1A36', fg: '#FFFFFF' },
   { key: 'indicator', title: 'Indicator Builder', text: 'Describe an indicator in plain words, see it on a real chart, add it to TradingView or MT5.', bg: '#7C3AED', fg: '#FFFFFF' },
@@ -66,6 +68,7 @@ export function ToolsView({ signedIn }: { signedIn: boolean }) {
             {open === 'charts' && <Charts initial={chartSym} />}
             {open === 'bot' && <BotBuilder signedIn={signedIn} />}
             {open === 'indicator' && <IndicatorBuilder signedIn={signedIn} />}
+            {open === 'analyse' && <ChartAnalyzer signedIn={signedIn} />}
             {open === 'journal' && <Journal signedIn={signedIn} />}
           </section>
         )}

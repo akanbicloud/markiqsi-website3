@@ -49,6 +49,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
           { title: 'Interest rates and central banks', text: 'See where central bank interest rates stand and follow central bank broadcasts, so you understand what the market is reacting to.' },
           { title: 'News in plain words', text: 'Headlines explained simply, including geopolitics: wars, elections, sanctions and trade.' },
           { title: 'Ask MarkIQ', text: 'Ask why a currency pair or asset is moving and get the fundamentals behind it, including the history. Ask MarkIQ is in beta.' },
+          { title: 'Chart Analysis', text: 'Upload a screenshot of your chart and get the structure and key levels from real price data, the news behind the move and possible scenarios. In beta.' },
           { title: 'Telegram alerts', text: 'A heads-up before a big release, and again when the official result is out, sent straight to Telegram.' },
         ],
       },
