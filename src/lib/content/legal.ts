@@ -68,7 +68,7 @@ export const TERMS: Section[] = [
   {
     "title": "Paid services",
     "paras": [
-      "MarkIQ SI is free at launch. If we introduce paid courses, classes or plans, we will show the price and any refund terms clearly before you pay."
+      "The tools and market information on MarkIQ SI are free to use, with fair daily limits. Academy courses and classes are paid: every price is shown on the Courses page before you sign up, and card payments are processed by our payment provider. Contact us before paying if anything about a price or refund is unclear."
     ]
   },
   {
@@ -117,7 +117,7 @@ export const PRIVACY: Section[] = [
   {
     "title": "What we never collect",
     "paras": [
-      "We never ask for or store your broker or MT5 trading password. We do not collect card details at launch."
+      "We never ask for or store your broker or MT5 trading password. We never take deposits, manage money or trade on your behalf. Course payments are handled by our payment provider, and we do not see or store your full card details."
     ]
   },
   {

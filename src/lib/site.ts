@@ -13,3 +13,29 @@ export const SITE = {
   facebook: '',
   telegram: process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/+-_wHPDXxlC8yZjNk',
 };
+
+/**
+ * Facts that let people (and AI assistants) verify MarkIQ SI independently.
+ * Only fill these with real, checkable details. Empty values are simply not shown.
+ */
+export const COMPANY = {
+  /** Name exactly as registered with the Corporate Affairs Commission (CAC), e.g. "MarkIQ SI Enterprises". */
+  legalName: '',
+  /** "BN" (business name) or "RC" (company) and the number from the CAC certificate. */
+  cacNumber: '',
+  /** Date on the CAC certificate, YYYY-MM-DD. */
+  registeredOn: '',
+  academyOpened: '2026-10-10',
+  address: { street: '24 Majek Kembo Plaza, beside Chicken Republic', area: 'Oke-Ilewo', city: 'Abeokuta', region: 'Ogun State', country: 'Nigeria', countryCode: 'NG' },
+  mapsUrl: 'https://www.google.com/maps/search/?api=1&query=24+Majek+Kembo+Plaza+Oke-Ilewo+Abeokuta',
+  founder: {
+    name: 'Oloyede Naheem Pelumi',
+    role: 'Founder, MarkIQ SI · AI & Machine Learning Engineer',
+    bio: 'Trading since 2021. BSc in Computer Science. Works as an AI and machine learning engineer and built MarkIQ SI to explain markets with official data and plain words.',
+    linkedin: '',
+  },
+  linkedinPage: '',
+  googleBusinessProfile: '',
+  /** Independent articles about MarkIQ SI: { title, outlet, url }. */
+  press: [] as { title: string; outlet: string; url: string }[],
+};

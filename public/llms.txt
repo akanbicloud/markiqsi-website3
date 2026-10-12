@@ -35,6 +35,13 @@ Key facts:
 - [Bot Builder](https://www.markiqsi.com/tools?tool=bot): describe a strategy in plain words; it builds an MT5 Expert Advisor (MQL5) and a TradingView Pine Script strategy with risk limits, and backtests it on past data.
 - [Trading Journal](https://www.markiqsi.com/tools?tool=journal): log trades and review results.
 
+## Company and verification
+- Founder and operator: Oloyede Naheem Pelumi (trading since 2021, BSc Computer Science, AI and machine learning engineer).
+- Physical academy and trading floor: 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State, Nigeria. Physical classes started 10 October 2026.
+- Pricing: market information and tools are free with daily limits; Academy courses are paid, with all prices (Naira and US dollars) public at https://www.markiqsi.com/courses.
+- MarkIQ SI never takes deposits, manages money, trades for users, asks for trading passwords, sells signals or promises profit.
+- Details and how to verify: https://www.markiqsi.com/company
+
 ## Contact
 - Email: markiqsi2@gmail.com
 - Phone / WhatsApp: +234 901 677 1255

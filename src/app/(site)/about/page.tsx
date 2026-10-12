@@ -45,7 +45,7 @@ const AUDIENCE = [
 ];
 
 const ROAD = [
-  { stage: 'Available at launch', on: true, items: ['Telegram market alerts from official data', 'Markets: events, rates and news', 'Risk Calculator and Prop Challenge Tracker', 'Charts and the Trading Journal'] },
+  { stage: 'Available now', on: true, items: ['Telegram market alerts from official data', 'Markets: events, rates and news', 'Risk Calculator and Prop Challenge Tracker', 'Charts and the Trading Journal'] },
   { stage: 'In beta', on: false, items: ['Market Scanner with Telegram alerts', 'Bot Builder with backtesting, break-even and trailing stops', 'Indicator Builder for TradingView and MT5', 'Chart Analysis from a screenshot', 'Ask MarkIQ', 'Academy courses and classes in Abeokuta and online'] },
   { stage: 'Coming next', on: false, items: ['A community for MarkIQ SI traders', 'A marketplace to publish and sell bots and indicators', 'Weekly research and market outlooks', 'Certificates for completed courses'] },
 ];
@@ -178,7 +178,7 @@ export default function AboutPage() {
 
       <RevealSection style={{ background: 'linear-gradient(180deg, #0B1A36 0%, #0D2350 100%)', color: '#FFFFFF' }}>
         <div className="wrap stack" style={{ padding: '110px 16px', gap: 34 }}>
-          <Head light eyebrow="Where we're headed" title="We're just getting started" text="We release features only when they work with real data. Here is what is available at launch, what is in beta, and what comes next." />
+          <Head light eyebrow="Where we're headed" title="We're just getting started" text="We release features only when they work with real data. Here is what is available now, what is in beta, and what comes next." />
           <div className="grid g-3" style={{ gap: 20 }}>
             {ROAD.map((r) => (
               <div key={r.stage} className="stack" style={{ borderRadius: 28, padding: 28, gap: 14, ...(r.on ? { background: '#FFFFFF', color: '#0B1A36' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.16)' }) }}>
