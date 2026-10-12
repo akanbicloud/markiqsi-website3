@@ -20,7 +20,7 @@ export function ConfirmLogin({ token }: { token: string }) {
         localStorage.removeItem('mq_next');
       } catch {}
       // Send people back to the course they were enrolling in, once they have finished onboarding.
-      window.location.href = d.next === '/account' && back.startsWith('/') && !back.startsWith('//') ? back : d.next || '/account';
+      window.location.href = d.next === '/account' && /^\/(?![\/\\])/.test(back) ? back : d.next || '/account';
     } catch (e) {
       setErr((e as Error).message);
       setBusy(false);
