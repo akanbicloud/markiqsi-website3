@@ -25,6 +25,7 @@ export function Footer() {
             <Link href="/academy">Academy</Link>
             <Link href="/courses">Courses</Link>
             <Link href="/about">About</Link>
+            <Link href="/company">Company &amp; verification</Link>
             <Link href="/faqs">FAQs</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>

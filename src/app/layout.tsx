@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BackToTop } from '@/components/BackToTop';
 import { currentUser } from '@/lib/users';
-import { SITE } from '@/lib/site';
+import { COMPANY, SITE } from '@/lib/site';
 
 const DESCRIPTION = 'MarkIQ SI is a market intelligence platform and trading academy: alerts on big economic news from official data, news explained in plain words, trading courses, and free tools to plan, test and automate your trading, including a no-code bot builder for MT5 and TradingView, a market scanner and prop firm tools. Physical classes in Abeokuta, Nigeria.';
 
@@ -57,8 +57,26 @@ const jsonLd = {
       description: DESCRIPTION,
       email: SITE.email,
       telephone: SITE.phoneIntl,
-      founder: { '@type': 'Person', name: 'Oloyede Naheem Pelumi', jobTitle: 'Founder' },
-      sameAs: [SITE.instagram, SITE.x, SITE.facebook, SITE.telegram].filter(Boolean),
+      ...(COMPANY.legalName ? { legalName: COMPANY.legalName } : {}),
+      ...(COMPANY.cacNumber ? { identifier: { '@type': 'PropertyValue', propertyID: 'CAC registration number (Nigeria)', value: COMPANY.cacNumber } } : {}),
+      ...(COMPANY.registeredOn ? { foundingDate: COMPANY.registeredOn } : {}),
+      address: { '@type': 'PostalAddress', streetAddress: `${COMPANY.address.street}, ${COMPANY.address.area}`, addressLocality: COMPANY.address.city, addressRegion: COMPANY.address.region, addressCountry: COMPANY.address.countryCode },
+      contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', telephone: SITE.phoneIntl, email: SITE.email, areaServed: 'NG', availableLanguage: ['English'] },
+      founder: { '@id': `${SITE.url}/#founder` },
+      knowsAbout: ['Forex trading education', 'Fundamental analysis', 'Technical analysis', 'Trading bots', 'MetaTrader 5', 'TradingView Pine Script', 'Gold trading', 'Prop firm challenges'],
+      sameAs: [SITE.instagram, SITE.x, SITE.facebook, SITE.telegram, COMPANY.linkedinPage, COMPANY.googleBusinessProfile].filter(Boolean),
+      subjectOf: { '@type': 'WebPage', url: `${SITE.url}/company` },
+    },
+    {
+      '@type': 'Person',
+      '@id': `${SITE.url}/#founder`,
+      name: COMPANY.founder.name,
+      jobTitle: 'Founder',
+      description: COMPANY.founder.bio,
+      image: `${SITE.url}/founder.jpg`,
+      worksFor: { '@id': `${SITE.url}/#org` },
+      url: `${SITE.url}/about#founder`,
+      ...(COMPANY.founder.linkedin ? { sameAs: [COMPANY.founder.linkedin] } : {}),
     },
     {
       '@type': 'WebSite',

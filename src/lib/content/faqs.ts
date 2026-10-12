@@ -6,6 +6,11 @@ export const FAQS: { topic: string; q: string; a: string }[] = [
   },
   {
     "topic": "Getting started",
+    "q": "Is MarkIQ SI legit? Who runs it?",
+    "a": "MarkIQ SI is a trading education and market information platform founded and run by Oloyede Naheem Pelumi, with a physical academy and trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta. You can call or WhatsApp +234 901 677 1255 or visit. The tools are free, every course price is public, and we never take deposits, manage money, sell signals or promise profit. See markiqsi.com/company for how to verify us."
+  },
+  {
+    "topic": "Getting started",
     "q": "Do I need an account to use the website?",
     "a": "No. The Markets page and all the tools, including the Bot Builder, Indicator Builder, Market Scanner and backtests, work without an account, with fair daily limits. A free account gives you higher limits and lets you save bots and indicators, keep a trading journal, get Telegram alerts and enrol in courses."
   },
