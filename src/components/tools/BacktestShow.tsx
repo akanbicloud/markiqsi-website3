@@ -5,7 +5,7 @@ import { CandlestickSeries, createChart, createSeriesMarkers, LineStyle, type IC
 
 /* ------------------------------------------------------------------ types */
 export type TradeLog = {
-  side: 'Buy' | 'Sell'; entryIdx: number; exitIdx: number; entry: number; sl: number; tp: number;
+  side: 'Buy' | 'Sell'; entryIdx: number; exitIdx: number; entry: number; sl: number; tp: number; exit?: number;
   result: 'Win' | 'Loss'; pips: number; money: number; equityAfter: number; openTime: string; closeTime: string;
 };
 export type BT = {
@@ -13,6 +13,7 @@ export type BT = {
   startEquity: number; endEquity: number; returnPct: number; from: string; to: string; candles: number; equity: number[];
   lastTrades: { time: string; side: string; result: string; pips: number }[]; assumptions: string[];
   log: TradeLog[];
+  split?: { cut: string; inSample: { trades: number; winRate: number; returnPct: number }; outOfSample: { trades: number; winRate: number; returnPct: number } } | null;
   stats: {
     avgWinMoney: number; avgLossMoney: number; bestTrade: TradeLog | null; worstTrade: TradeLog | null;
     longestWinStreak: number; longestLossStreak: number; drawdownFrom: string; drawdownTo: string;
@@ -170,7 +171,7 @@ export function BacktestReplay({ data, strategy, onDone }: { data: BTData; strat
       if (closedNow) {
         const t = closedNow;
         const x = chart.timeScale().timeToCoordinate(bars[t.exitIdx][0] as UTCTimestamp);
-        const y = series.priceToCoordinate(t.result === 'Win' ? t.tp : t.sl);
+        const y = series.priceToCoordinate(t.exit ?? (t.result === 'Win' ? t.tp : t.sl));
         if (x != null && y != null) setBubble({ k: st.trades, x, y, text: `${t.pips > 0 ? '+' : '−'}${Math.abs(t.pips)} pips ${t.result === 'Win' ? '✅' : '❌'}`, win: t.result === 'Win' });
       }
       const p = (shown - warm) / Math.max(1, bars.length - warm);
@@ -319,6 +320,24 @@ export function BacktestReport({ data, strategy, timeframeLabel, onReplay, onCha
           </div>
         </div>
       </div>
+      {r.split && (
+        <div className="bt-box">
+          <h3>Does it hold up on data it was not built on?</h3>
+          <div className="bt-tiles">
+            <div className="bt-t"><div className="k">First 70% (to {monthYear(r.split.cut)})</div><div className={`v ${r.split.inSample.returnPct > 0 ? 'bt-up' : r.split.inSample.returnPct < 0 ? 'bt-down' : ''}`}>{pct(r.split.inSample.returnPct)}</div><div className="x">{r.split.inSample.trades} trades · {Math.round(r.split.inSample.winRate)}% wins</div></div>
+            <div className="bt-t"><div className="k">Last 30% (unseen)</div><div className={`v ${r.split.outOfSample.returnPct > 0 ? 'bt-up' : r.split.outOfSample.returnPct < 0 ? 'bt-down' : ''}`}>{pct(r.split.outOfSample.returnPct)}</div><div className="x">{r.split.outOfSample.trades} trades · {Math.round(r.split.outOfSample.winRate)}% wins</div></div>
+          </div>
+          <div className="bt-warn">
+            <b>Why this matters: </b>{r.split.outOfSample.trades < 10
+              ? 'Too few trades in the last 30% to judge. Test on a longer history or a lower timeframe.'
+              : r.split.inSample.returnPct > 0 && r.split.outOfSample.returnPct <= 0
+                ? 'It made money on the first part of the history but not on the last part. That is a warning sign of a strategy fitted to the past. Change the rules carefully and test again.'
+                : r.split.outOfSample.returnPct > 0
+                  ? 'It also did well on the most recent 30% of the history. That is a good sign, but still test on a demo account.'
+                  : 'It lost money on both parts of the history. This strategy needs work before a demo account.'}
+          </div>
+        </div>
+      )}
       <div className="bt-actions">
         <button type="button" className="btn btn-sm" style={{ background: '#0B1A36', color: '#FFFFFF' }} onClick={onReplay}>▶ Watch the replay again</button>
         <button type="button" className="btn btn-sm btn-outline" style={{ color: '#0B1A36', borderColor: '#0B1A36' }} onClick={onChangeRules}>✏️ Change the rules</button>

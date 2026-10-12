@@ -446,6 +446,8 @@ input double StopLossPips = ${r.stopLossPips};
 input double TakeProfitPips = ${r.takeProfitPips};
 input int    MaxTradesPerDay = ${r.maxTradesPerDay};
 input double DailyLossLimitPercent = ${r.dailyLossPercent}; // stop trading for the day after this loss
+input double BreakEvenPips = ${r.breakEvenPips};   // move stop to entry + 1 pip after this profit (0 = off)
+input double TrailPips = ${r.trailPips};           // trail the stop this far behind price once in profit (0 = off)
 input bool   AllowBuy = ${r.direction !== 'short'};
 input bool   AllowSell = ${r.direction !== 'long'};
 input double PipSizeOverride = 0;       // leave 0 for automatic
@@ -502,6 +504,33 @@ double LotsForRisk(double slDistance)
    return MathMin(lots, maxL);
 }
 
+// Break-even and trailing stop, checked on every tick. The stop only ever moves in your favour.
+void ManagePosition()
+{
+   if(BreakEvenPips <= 0 && TrailPips <= 0) return;
+   double pip = Pip();
+   for(int k = PositionsTotal() - 1; k >= 0; k--)
+   {
+      ulong t = PositionGetTicket(k);
+      if(t == 0 || PositionGetString(POSITION_SYMBOL) != _Symbol || PositionGetInteger(POSITION_MAGIC) != (long)MagicNumber) continue;
+      bool isLong = PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY;
+      double ep = PositionGetDouble(POSITION_PRICE_OPEN), sl = PositionGetDouble(POSITION_SL), tp = PositionGetDouble(POSITION_TP);
+      double px = isLong ? SymbolInfoDouble(_Symbol, SYMBOL_BID) : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double moved = isLong ? px - ep : ep - px;
+      double ns = sl;
+      if(BreakEvenPips > 0 && moved >= BreakEvenPips * pip)
+         ns = isLong ? MathMax(ns, ep + pip) : (ns == 0 ? ep - pip : MathMin(ns, ep - pip));
+      if(TrailPips > 0)
+      {
+         double ts = isLong ? px - TrailPips * pip : px + TrailPips * pip;
+         if(isLong && ts > ep && ts > ns) ns = ts;
+         if(!isLong && ts < ep && (ns == 0 || ts < ns)) ns = ts;
+      }
+      ns = NormalizeDouble(ns, _Digits);
+      if(MathAbs(ns - sl) >= _Point && (isLong ? ns < px : ns > px)) trade.PositionModify(t, ns, tp);
+   }
+}
+
 int OnInit()
 {
    trade.SetExpertMagicNumber(MagicNumber);
@@ -510,6 +539,7 @@ int OnInit()
 
 void OnTick()
 {
+   ManagePosition();
    MqlDateTime now; TimeToStruct(TimeCurrent(), now);
    now.hour = 0; now.min = 0; now.sec = 0;
    datetime today = StructToTime(now);

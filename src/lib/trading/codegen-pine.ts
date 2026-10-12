@@ -453,7 +453,32 @@ if finalSig == -1 and canTrade
     tradesToday += 1
 
 ticks = pipSize / syminfo.mintick
-strategy.exit("Buy exit", from_entry = "Buy", loss = slPips * ticks, profit = tpPips * ticks)
-strategy.exit("Sell exit", from_entry = "Sell", loss = slPips * ticks, profit = tpPips * ticks)
+beP = input.float(${r.breakEvenPips}, "Break-even after (pips, 0 = off)")
+trP = input.float(${r.trailPips}, "Trailing stop (pips, 0 = off)")
+var float bestPx = na
+var float dynStop = na
+if strategy.position_size == 0
+    bestPx := na
+    dynStop := na
+    strategy.exit("Buy exit", from_entry = "Buy", loss = slPips * ticks, profit = tpPips * ticks)
+    strategy.exit("Sell exit", from_entry = "Sell", loss = slPips * ticks, profit = tpPips * ticks)
+else
+    ep = strategy.position_avg_price
+    isLong = strategy.position_size > 0
+    bestPx := na(bestPx) ? (isLong ? high : low) : isLong ? math.max(bestPx, high) : math.min(bestPx, low)
+    dynStop := na(dynStop) ? (isLong ? ep - slPips * pipSize : ep + slPips * pipSize) : dynStop
+    moved = isLong ? bestPx - ep : ep - bestPx
+    if beP > 0 and moved >= beP * pipSize
+        dynStop := isLong ? math.max(dynStop, ep + pipSize) : math.min(dynStop, ep - pipSize)
+    if trP > 0
+        tStop = isLong ? bestPx - trP * pipSize : bestPx + trP * pipSize
+        if isLong and tStop > ep and tStop > dynStop
+            dynStop := tStop
+        if not isLong and tStop < ep and tStop < dynStop
+            dynStop := tStop
+    if isLong
+        strategy.exit("Buy exit", from_entry = "Buy", stop = dynStop, limit = ep + tpPips * pipSize)
+    else
+        strategy.exit("Sell exit", from_entry = "Sell", stop = dynStop, limit = ep - tpPips * pipSize)
 `;
 }

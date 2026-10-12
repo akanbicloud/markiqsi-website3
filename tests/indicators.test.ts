@@ -94,3 +94,35 @@ test('market structure summary uses only real prices', async () => {
   for (const p of [...s.resistance, ...s.support]) assert.ok(prices.has(p), 'levels come from real candle highs/lows');
   assert.equal(analyzeStructure(c.slice(0, 50), 5), null);
 });
+
+test('break-even and trailing stops in the backtest, plus out-of-sample split', async () => {
+  const { backtest } = await import('../src/lib/trading/backtest');
+  const { parseStrategy } = await import('../src/lib/trading/botspec');
+  const pip = 0.0001;
+  const mk = (closes: number[]) => closes.map((c, i) => ({ t: Date.UTC(2026, 0, 5) + i * 3600000, o: i ? closes[i - 1] : c, c, h: Math.max(c, i ? closes[i - 1] : c) + 0.00002, l: Math.min(c, i ? closes[i - 1] : c) - 0.00002 }));
+  // flat, breakout up (signal), run up 30 pips, then fall 60 pips
+  const closes = [...Array(40).fill(1.1), 1.1005, 1.1010, 1.1020, 1.1035, 1.1030, 1.1015, 1.1000, 1.0985, 1.0975, ...Array(20).fill(1.0975)];
+  const c = mk(closes);
+  const base = sanitizeRules({ entry: { kind: 'breakout', lookback: 20 }, direction: 'long', stopLossPips: 20, takeProfitPips: 100, maxTradesPerDay: 1, session: 'any' });
+  const plain = backtest(base, c, pip, 0);
+  assert.equal(plain.log[0].result, 'Loss');
+  assert.equal(plain.log[0].pips, -20);
+  const be = backtest({ ...base, breakEvenPips: 15 }, c, pip, 0);
+  assert.equal(be.log[0].result, 'Win');
+  assert.equal(be.log[0].pips, 1);
+  const tr = backtest({ ...base, trailPips: 10 }, c, pip, 0);
+  assert.equal(tr.log[0].result, 'Win');
+  assert.ok(tr.log[0].pips > 1 && tr.log[0].pips < 30);
+
+  const p = parseStrategy('Buy EURUSD on the 1 hour when the 20 EMA crosses above the 50 EMA. Stop loss 20 pips, take profit 60 pips. Move stop to break even after 15 pips and use a trailing stop of 25 pips.');
+  assert.equal(p.rules.breakEvenPips, 15);
+  assert.equal(p.rules.trailPips, 25);
+  const mq = (await import('../src/lib/trading/codegen-mql5')).toMql5(p.rules);
+  assert.match(mq, /BreakEvenPips = 15/);
+  assert.match(mq, /ManagePosition\(\);/);
+  assert.match(toPine(p.rules), /trP = input\.float\(25/);
+
+  const long = backtest(sanitizeRules({ entry: { kind: 'ema_cross', fast: 5, slow: 20 }, stopLossPips: 20, takeProfitPips: 40, maxTradesPerDay: 50 }), market(1500), pip, 1);
+  assert.ok(long.split);
+  assert.equal(long.split!.inSample.trades + long.split!.outOfSample.trades, long.log.length);
+});
