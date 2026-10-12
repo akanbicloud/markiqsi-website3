@@ -6,14 +6,14 @@ import { BackToTop } from '@/components/BackToTop';
 import { currentUser } from '@/lib/users';
 import { SITE } from '@/lib/site';
 
-const DESCRIPTION = 'MarkIQ SI is a market intelligence platform and trading academy: alerts on big economic news from official data, news explained in plain words, trading courses, and free tools to plan, test and automate your trading, including a bot builder for MT5 and TradingView.';
+const DESCRIPTION = 'MarkIQ SI is a market intelligence platform and trading academy: alerts on big economic news from official data, news explained in plain words, trading courses, and free tools to plan, test and automate your trading, including a no-code bot builder for MT5 and TradingView, a market scanner and prop firm tools. Physical classes in Abeokuta, Nigeria.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: { default: 'MarkIQ SI · Market Intelligence & Trading Academy', template: '%s · MarkIQ SI' },
   description: DESCRIPTION,
   applicationName: 'MarkIQ SI',
-  keywords: ['forex', 'trading academy', 'market news', 'economic calendar', 'forex alerts Telegram', 'trading bot builder', 'MT5 expert advisor', 'Pine Script', 'market scanner', 'risk calculator', 'prop firm challenge', 'trading journal', 'learn trading', 'Nigeria trading academy'],
+  keywords: ['forex', 'trading academy', 'market news', 'economic calendar', 'forex alerts Telegram', 'trading bot builder', 'MT5 expert advisor', 'Pine Script', 'market scanner', 'risk calculator', 'prop firm challenge', 'prop firm tools', 'fundamental analysis forex', 'build trading bot without coding', 'no code trading bot', 'backtest trading strategy', 'trading academy Abeokuta', 'learn forex in Abeokuta', 'trading journal', 'learn trading', 'Nigeria trading academy'],
   authors: [{ name: 'Oloyede Naheem Pelumi' }],
   creator: 'MarkIQ SI',
   publisher: 'MarkIQ SI',

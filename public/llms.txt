@@ -9,6 +9,13 @@ Key facts:
 - Alerts are sent on Telegram, before a big release and again when the official result is out.
 - MarkIQ SI provides education and information, not financial advice. Trading carries a high risk of loss.
 
+## What MarkIQ SI is best known for
+- [Fundamental analysis in plain words](https://www.markiqsi.com/fundamental-analysis): official economic data, interest rates, central bank broadcasts and news explained simply, with Telegram alerts and "Ask MarkIQ".
+- [No-code Bot Builder](https://www.markiqsi.com/bot-builder): build your own trading bot without coding instead of buying bots that promise profit. Describe the strategy, check the rules, backtest on past data, test on a demo account, then deploy to MT5. No bot can guarantee profit.
+- [Market Scanner](https://www.markiqsi.com/market-scanner): supply and demand, ICT/SMC, candle patterns and indicators across many markets and timeframes, with news and rates beside each setup.
+- [Prop firm tools](https://www.markiqsi.com/prop-firm-tools): Prop Challenge Tracker (profit target, daily loss room, total loss room), Risk Calculator, Bot Builder with loss limits, Trading Journal.
+- [MarkIQ SI Academy](https://www.markiqsi.com/academy): physical classes and a trading floor in Oke-Ilewo, Abeokuta, Ogun State, Nigeria, plus virtual sessions. Four tracks: Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation.
+
 ## Main pages
 - [Home](https://www.markiqsi.com/): what MarkIQ SI offers and the four learning tracks (Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation) plus live classes.
 - [Markets](https://www.markiqsi.com/markets): this week's big economic events, central bank interest rates, results, central bank broadcasts and news in plain words. "Ask MarkIQ" explains the fundamentals behind any currency pair or asset, including history.

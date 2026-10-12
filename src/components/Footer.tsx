@@ -17,6 +17,11 @@ export function Footer() {
             <Link href="/#learn">Learn</Link>
             <Link href="/markets">Markets</Link>
             <Link href="/tools">Tools</Link>
+            <Link href="/fundamental-analysis">Fundamental analysis</Link>
+            <Link href="/bot-builder">Bot Builder</Link>
+            <Link href="/market-scanner">Market Scanner</Link>
+            <Link href="/prop-firm-tools">Prop firm tools</Link>
+            <Link href="/academy">Academy</Link>
             <Link href="/about">About</Link>
             <Link href="/faqs">FAQs</Link>
             <Link href="/terms">Terms</Link>
