@@ -7,6 +7,7 @@ import { PropTracker } from './PropTracker';
 import { MarketScanner } from './MarketScanner';
 import { Charts } from './Charts';
 import { BotBuilder } from './BotBuilder';
+import { IndicatorBuilder } from './IndicatorBuilder';
 import { Journal } from './Journal';
 
 const TOOLS = [
@@ -15,6 +16,7 @@ const TOOLS = [
   { key: 'scan', title: 'Market Scanner', text: 'Scan many markets for supply and demand, candle patterns, ICT and SMC setups. Get Telegram alerts.', bg: '#7DB8FF', fg: '#0B1A36' },
   { key: 'charts', title: 'Charts', text: 'Real charts with years of history, indicators and drawing tools.', bg: '#3DDC97', fg: '#0B1A36' },
   { key: 'bot', title: 'Bot Builder', text: 'Turn your strategy into a robot you can test, then run on MT5.', bg: '#0B1A36', fg: '#FFFFFF' },
+  { key: 'indicator', title: 'Indicator Builder', text: 'Describe an indicator in plain words, see it on a real chart, add it to TradingView or MT5.', bg: '#7C3AED', fg: '#FFFFFF' },
   { key: 'journal', title: 'Trading Journal', text: 'Log trades, see your P&L calendar, find what works.', bg: '#FFB547', fg: '#0B1A36' },
 ];
 
@@ -63,6 +65,7 @@ export function ToolsView({ signedIn }: { signedIn: boolean }) {
             {open === 'scan' && <MarketScanner signedIn={signedIn} onOpenChart={(symbol) => { setChartSym(symbol); pick('charts'); }} />}
             {open === 'charts' && <Charts initial={chartSym} />}
             {open === 'bot' && <BotBuilder signedIn={signedIn} />}
+            {open === 'indicator' && <IndicatorBuilder signedIn={signedIn} />}
             {open === 'journal' && <Journal signedIn={signedIn} />}
           </section>
         )}

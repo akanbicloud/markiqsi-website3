@@ -24,7 +24,7 @@ function limitFor(feature: string, signedIn: boolean) {
 export type UsageResult = { ok: boolean; remaining: number; limit: number; signedIn: boolean };
 
 /** Counts one use and says whether it is allowed. Without a database it always allows (local dev). */
-export async function useQuota(req: Request, feature: string): Promise<UsageResult> {
+export async function takeQuota(req: Request, feature: string): Promise<UsageResult> {
   const s = await getSession().catch(() => null);
   const signedIn = !!s;
   const limit = limitFor(feature, signedIn);

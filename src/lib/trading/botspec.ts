@@ -212,8 +212,16 @@ export function parseStrategy(text: string): { rules: Rules; understood: string[
   if (!entryFound && patterns.length) {
     // the LAST pattern mentioned is usually the entry trigger ("after a sweep, enter on the FVG")
     const order = patterns.map((k) => ({ k, i: t.search(PATTERN_WORDS.find(([, kk]) => kk === k)![0]) })).sort((a, b) => a.i - b.i);
-    r.entry = { kind: order[order.length - 1].k };
-    if (order.length > 1) r.confirm = { kind: order[order.length - 2].k, within: 10 };
+    let entryK = order[order.length - 1].k;
+    let confK = order.length > 1 ? order[order.length - 2].k : null;
+    // "...on the FVG after a liquidity sweep": the pattern before "after" is the entry.
+    if (confK && order.length > 1) {
+      const a = order[order.length - 2].i, b = order[order.length - 1].i;
+      const afterAt = t.slice(a, b).search(/\bafter\b/i);
+      if (afterAt >= 0) [entryK, confK] = [confK, entryK];
+    }
+    r.entry = { kind: entryK };
+    if (confK) r.confirm = { kind: confK, within: 10 };
     entryFound = true;
     r.direction = wantsBuy && !wantsSell ? 'long' : wantsSell && !wantsBuy ? 'short' : 'both';
     const bb = t.match(/bollinger[^.]*?\(?\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)/i);

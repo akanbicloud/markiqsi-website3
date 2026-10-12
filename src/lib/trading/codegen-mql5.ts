@@ -544,3 +544,5 @@ void OnTick()
 }
 `;
 }
+
+export { ENGINE as MQL5_ENGINE, TF as MQL5_TF };

@@ -12,6 +12,7 @@ Key facts:
 ## What MarkIQ SI is best known for
 - [Fundamental analysis in plain words](https://www.markiqsi.com/fundamental-analysis): official economic data, interest rates, central bank broadcasts and news explained simply, with Telegram alerts and "Ask MarkIQ".
 - [No-code Bot Builder](https://www.markiqsi.com/bot-builder): build your own trading bot without coding instead of buying bots that promise profit. Describe the strategy, check the rules, backtest on past data, test on a demo account, then deploy to MT5. No bot can guarantee profit.
+- [No-code Indicator Builder](https://www.markiqsi.com/indicator-builder): describe an indicator in plain words (EMA/SMA, Bollinger Bands, Supertrend, RSI, MACD, Stochastic, buy/sell arrows from ICT/SMC and price-action signals, alerts), preview it on real history, then export to TradingView Pine Script v6 or MT5 (MQL5).
 - [Market Scanner](https://www.markiqsi.com/market-scanner): supply and demand, ICT/SMC, candle patterns and indicators across many markets and timeframes, with news and rates beside each setup.
 - [Prop firm tools](https://www.markiqsi.com/prop-firm-tools): Prop Challenge Tracker (profit target, daily loss room, total loss room), Risk Calculator, Bot Builder with loss limits, Trading Journal.
 - [MarkIQ SI Academy](https://www.markiqsi.com/academy): physical classes and a trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State, Nigeria, plus virtual sessions. Course outlines and prices (Naira and US dollars): https://www.markiqsi.com/courses Four tracks: Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation.
@@ -29,6 +30,7 @@ Key facts:
 - [Prop Challenge Tracker](https://www.markiqsi.com/tools?tool=prop): track a prop firm challenge against its daily and total loss limits and profit target.
 - [Market Scanner](https://www.markiqsi.com/tools?tool=scan): scans markets on timeframes from 1 minute to monthly for supply and demand zones, support and resistance, candle patterns, ICT and SMC setups (fair value gaps, order blocks, break of structure, liquidity sweeps, OTE), EMA, RSI, MACD, Bollinger Bands, Stochastic, Supertrend and more, with higher-timeframe confirmation and optional Telegram alerts.
 - [Charts](https://www.markiqsi.com/tools?tool=charts): years of price history from 1 minute to monthly with bar replay for practice, plus a live TradingView chart.
+- [Indicator Builder](https://www.markiqsi.com/tools?tool=indicator): build an indicator from plain words, preview it on real history, export to TradingView and MT5.
 - [Bot Builder](https://www.markiqsi.com/tools?tool=bot): describe a strategy in plain words; it builds an MT5 Expert Advisor (MQL5) and a TradingView Pine Script strategy with risk limits, and backtests it on past data.
 - [Trading Journal](https://www.markiqsi.com/tools?tool=journal): log trades and review results.
 

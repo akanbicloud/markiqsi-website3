@@ -111,11 +111,50 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
       { q: 'Does the Bot Builder cost money?', a: 'The tools on MarkIQ SI are free to use.' },
     ],
     related: [
-      { href: '/market-scanner', label: 'Market Scanner', text: 'Find the setups your bot should trade.' },
+      { href: '/indicator-builder', label: 'Indicator Builder', text: 'Build your own indicators with no code.' },
       { href: '/prop-firm-tools', label: 'Prop firm tools', text: 'Keep a bot inside daily and total loss limits.' },
       { href: '/academy', label: 'Academy', text: 'Learn Pine Script and MQL5 in the Trading Automation track.' },
     ],
     schema: { kind: 'software', name: 'MarkIQ SI Bot Builder', category: 'FinanceApplication' },
+  },
+
+  'indicator-builder': {
+    slug: 'indicator-builder',
+    title: 'No-Code Indicator Builder for TradingView and MT5',
+    description: 'Build your own trading indicator without coding. Describe it in plain words, see it on a real chart with years of history, then add it to TradingView (Pine Script) or MT5. Free.',
+    eyebrow: 'Indicator Builder',
+    h1: 'Build your own trading indicator, with no coding',
+    lead: 'Describe the indicator you want, like "20 and 50 EMA with arrows when they cross, only with the 200 EMA trend". See it drawn on a real chart with years of history, then add it to TradingView or MT5 in a few clicks.',
+    cta: { label: 'Open the Indicator Builder', href: '/tools?tool=indicator' },
+    secondaryCta: { label: 'Build a bot instead', href: '/bot-builder' },
+    sections: [
+      {
+        heading: 'What you can build',
+        items: [
+          { title: 'Lines on the chart', text: 'EMA, SMA, Bollinger Bands, Supertrend and Donchian channels, up to six at once.' },
+          { title: 'A lower panel', text: 'RSI, MACD or Stochastic with your own levels.' },
+          { title: 'Buy and sell arrows', text: 'Arrows from crosses, RSI, Bollinger Bands, supply and demand, support and resistance, candle patterns, fair value gaps, order blocks, break of structure, liquidity sweeps and more.' },
+          { title: 'Filters', text: 'Only after a confirmation, only with the 200 EMA trend, or only in the London and New York sessions.' },
+          { title: 'Alerts', text: 'Turn on alerts so TradingView or MT5 tells you when an arrow appears.' },
+          { title: 'Test it before you trust it', text: 'Scroll years of real history on the MarkIQ SI chart and check every arrow, then paste it into TradingView and check it there too.' },
+        ],
+      },
+    ],
+    stepsHeading: 'How it works',
+    steps: ['Describe your indicator in plain words.', 'Check what it will draw and change anything you want.', 'See it on a real chart for any market and timeframe.', 'Copy it into TradingView or download it for MT5.'],
+    note: 'An indicator shows information. It does not place trades, and arrows on past candles do not guarantee future results. The Indicator Builder is in beta. ' + DISCLAIMER,
+    faqs: [
+      { q: 'Can I create a TradingView indicator without coding?', a: 'Yes. Describe it in plain words and MarkIQ SI writes the Pine Script v6 code for you. Copy it into the TradingView Pine Editor and press Add to chart.' },
+      { q: 'Does it work with MT5?', a: 'Yes. Download the .mq5 file, put it in the MQL5 Indicators folder, compile it in MetaEditor and drag it onto a chart. Lower-panel oscillators use MT5\'s built-in RSI, MACD or Stochastic.' },
+      { q: 'Do I need an account?', a: 'No. You can build, preview and export without an account. A free account lets you save your indicators.' },
+      { q: 'Is it free?', a: 'Yes, the Indicator Builder is free to use, with a fair daily limit on AI help.' },
+    ],
+    related: [
+      { href: '/bot-builder', label: 'Bot Builder', text: 'Turn the same rules into a tested bot.' },
+      { href: '/market-scanner', label: 'Market Scanner', text: 'Find the setups across many markets.' },
+      { href: '/courses/trading-automation', label: 'Automation course', text: 'Learn to build and test properly.' },
+    ],
+    schema: { kind: 'software', name: 'MarkIQ SI Indicator Builder', category: 'FinanceApplication' },
   },
 
   'market-scanner': {
@@ -244,4 +283,4 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
   },
 };
 
-export const FEATURE_ORDER = ['fundamental-analysis', 'bot-builder', 'market-scanner', 'prop-firm-tools', 'academy'] as const;
+export const FEATURE_ORDER = ['fundamental-analysis', 'bot-builder', 'indicator-builder', 'market-scanner', 'prop-firm-tools', 'academy'] as const;

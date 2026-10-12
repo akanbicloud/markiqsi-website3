@@ -2,6 +2,7 @@ import { safeError } from '@/lib/http';
 import { body, fail, json, str } from '@/lib/http';
 import { describeRules, parseStrategy, sanitizeRules, type Rules } from '@/lib/trading/botspec';
 import { gemini, parseJson } from '@/lib/gemini';
+import { quotaMessage, takeQuota } from '@/lib/usage';
 
 export async function POST(req: Request) {
   const b = await body(req);
@@ -12,6 +13,8 @@ export async function POST(req: Request) {
   let questions = local.questions;
   let via = 'rules';
   if (!local.confident && process.env.GEMINI_API_KEY) {
+    const quota = await takeQuota(req, 'ai_build');
+    if (!quota.ok) return fail(quotaMessage(quota, 'AI builds'), 429);
     try {
       const system = `You convert a trader's plain-English strategy into JSON rules for a trading bot.
 Entry kinds you may use (and only these): "sd" supply & demand zones, "sr" support & resistance, "candles" candle patterns, "ibb" inside bar breakout, "fvg" fair value gap, "ob" order block, "bos" break of structure / CHoCH, "liq" liquidity sweep, "ote" optimal trade entry, "london" London breakout, "ema_cross" (fast, slow), "sma_cross" (fast, slow), "pullback" (trendLen, emaLen), "rsi" (period, lower, upper), "macd_cross", "bb" (bbPeriod, bbDev), "stoch" (stochK, stochD, stochSmooth), "supertrend" (stLen, stMult), "breakout" (lookback).
