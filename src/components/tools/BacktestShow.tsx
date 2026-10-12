@@ -332,8 +332,10 @@ export function BacktestReport({ data, strategy, timeframeLabel, onReplay, onCha
               ? 'Too few trades in the last 30% to judge. Test on a longer history or a lower timeframe.'
               : r.split.inSample.returnPct > 0 && r.split.outOfSample.returnPct <= 0
                 ? 'It made money on the first part of the history but not on the last part. That is a warning sign of a strategy fitted to the past. Change the rules carefully and test again.'
-                : r.split.outOfSample.returnPct > 0
-                  ? 'It also did well on the most recent 30% of the history. That is a good sign, but still test on a demo account.'
+                : r.split.outOfSample.returnPct > 0 && r.split.inSample.returnPct > 0
+                  ? 'It made money on both parts of the history, including the most recent 30%. That is a good sign, but still test on a demo account.'
+                  : r.split.outOfSample.returnPct > 0
+                    ? 'It lost money on the first 70% but made money on the last 30%. Mixed results like this are not reliable yet: test on more history and on a demo account.'
                   : 'It lost money on both parts of the history. This strategy needs work before a demo account.'}
           </div>
         </div>
