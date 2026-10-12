@@ -1,4 +1,5 @@
-export async function gemini(system: string, user: string, opts: { json?: boolean; maxTokens?: number } = {}) {
+/** `images` are base64 (no data: prefix) with their MIME type, e.g. a chart screenshot. */
+export async function gemini(system: string, user: string, opts: { json?: boolean; maxTokens?: number; images?: { mime: string; data: string }[]; timeoutMs?: number } = {}) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY is not set');
   const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
@@ -7,7 +8,7 @@ export async function gemini(system: string, user: string, opts: { json?: boolea
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
+      contents: [{ role: 'user', parts: [{ text: user }, ...(opts.images || []).map((i) => ({ inlineData: { mimeType: i.mime, data: i.data } }))] }],
       generationConfig: {
         temperature: 0.2,
         // Gemini 3 models think before answering and that counts against this limit, so leave room.
@@ -15,7 +16,7 @@ export async function gemini(system: string, user: string, opts: { json?: boolea
         ...(opts.json ? { responseMimeType: 'application/json' } : {}),
       },
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(opts.timeoutMs || 30000),
   });
   if (!r.ok) throw new Error(`Gemini error ${r.status}`);
   const d = await r.json();

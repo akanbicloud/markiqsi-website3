@@ -7,7 +7,7 @@ export const FAQS: { topic: string; q: string; a: string }[] = [
   {
     "topic": "Getting started",
     "q": "Do I need an account to use the website?",
-    "a": "No. You can explore the Markets page, read course outlines and try tools like the Risk Calculator without an account. Create an account to save your progress, get Telegram alerts, save bots and keep a trading journal."
+    "a": "No. The Markets page and all the tools, including the Bot Builder, Indicator Builder, Market Scanner and backtests, work without an account, with fair daily limits. A free account gives you higher limits and lets you save bots and indicators, keep a trading journal, get Telegram alerts and enrol in courses."
   },
   {
     "topic": "Getting started",
@@ -37,12 +37,27 @@ export const FAQS: { topic: string; q: string; a: string }[] = [
   {
     "topic": "Courses & classes",
     "q": "Do you offer physical classes?",
-    "a": "Yes. We run physical classes and live virtual sessions. Message us on WhatsApp at +234 901 677 1255 for dates and places."
+    "a": "Yes. Physical classes and our trading floor are at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, and we also run live virtual sessions. Message us on WhatsApp at +234 901 677 1255 for the next class date."
+  },
+  {
+    "topic": "Courses & classes",
+    "q": "How much are the courses, and how do I enrol?",
+    "a": "Every course outline and price is on the Courses page (markiqsi.com/courses), in Naira and US dollars, before you sign up. To enrol, sign in with your email and choose online or a physical class in Abeokuta. Courses teach skills and never promise profit."
   },
   {
     "topic": "Tools & bots",
     "q": "How does the Bot Builder work?",
     "a": "Describe your strategy in plain words. We show you the exact rules we understood, then build a bot for MT5 (MQL5) or TradingView (Pine Script). You backtest it on past data, run it on a demo account, and only then run it live on your own MT5."
+  },
+  {
+    "topic": "Tools & bots",
+    "q": "Can I build my own indicator?",
+    "a": "Yes. The Indicator Builder turns a plain-words description into an indicator: lines like EMAs or Bollinger Bands, an RSI, MACD or Stochastic panel, and buy and sell arrows with alerts. You see it on a real chart with years of history, then copy it into TradingView or download it for MT5. No coding and no account needed."
+  },
+  {
+    "topic": "Tools & bots",
+    "q": "Can MarkIQ SI analyse my chart screenshot?",
+    "a": "Yes. Open Chart Analysis in Tools, add a screenshot and choose the market and timeframe. We read what you drew, check the real price data for structure and key levels, add the news and interest-rate picture, and show possible bullish and bearish scenarios with the level that would prove each one wrong. It is education, not a signal or financial advice."
   },
   {
     "topic": "Tools & bots",

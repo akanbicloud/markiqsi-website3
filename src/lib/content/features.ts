@@ -49,6 +49,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
           { title: 'Interest rates and central banks', text: 'See where central bank interest rates stand and follow central bank broadcasts, so you understand what the market is reacting to.' },
           { title: 'News in plain words', text: 'Headlines explained simply, including geopolitics: wars, elections, sanctions and trade.' },
           { title: 'Ask MarkIQ', text: 'Ask why a currency pair or asset is moving and get the fundamentals behind it, including the history. Ask MarkIQ is in beta.' },
+          { title: 'Chart Analysis', text: 'Upload a screenshot of your chart and get the structure and key levels from real price data, the news behind the move and possible scenarios. In beta.' },
           { title: 'Telegram alerts', text: 'A heads-up before a big release, and again when the official result is out, sent straight to Telegram.' },
         ],
       },
@@ -111,11 +112,50 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
       { q: 'Does the Bot Builder cost money?', a: 'The tools on MarkIQ SI are free to use.' },
     ],
     related: [
-      { href: '/market-scanner', label: 'Market Scanner', text: 'Find the setups your bot should trade.' },
+      { href: '/indicator-builder', label: 'Indicator Builder', text: 'Build your own indicators with no code.' },
       { href: '/prop-firm-tools', label: 'Prop firm tools', text: 'Keep a bot inside daily and total loss limits.' },
       { href: '/academy', label: 'Academy', text: 'Learn Pine Script and MQL5 in the Trading Automation track.' },
     ],
     schema: { kind: 'software', name: 'MarkIQ SI Bot Builder', category: 'FinanceApplication' },
+  },
+
+  'indicator-builder': {
+    slug: 'indicator-builder',
+    title: 'No-Code Indicator Builder for TradingView and MT5',
+    description: 'Build your own trading indicator without coding. Describe it in plain words, see it on a real chart with years of history, then add it to TradingView (Pine Script) or MT5. Free.',
+    eyebrow: 'Indicator Builder',
+    h1: 'Build your own trading indicator, with no coding',
+    lead: 'Describe the indicator you want, like "20 and 50 EMA with arrows when they cross, only with the 200 EMA trend". See it drawn on a real chart with years of history, then add it to TradingView or MT5 in a few clicks.',
+    cta: { label: 'Open the Indicator Builder', href: '/tools?tool=indicator' },
+    secondaryCta: { label: 'Build a bot instead', href: '/bot-builder' },
+    sections: [
+      {
+        heading: 'What you can build',
+        items: [
+          { title: 'Lines on the chart', text: 'EMA, SMA, Bollinger Bands, Supertrend and Donchian channels, up to six at once.' },
+          { title: 'A lower panel', text: 'RSI, MACD or Stochastic with your own levels.' },
+          { title: 'Buy and sell arrows', text: 'Arrows from crosses, RSI, Bollinger Bands, supply and demand, support and resistance, candle patterns, fair value gaps, order blocks, break of structure, liquidity sweeps and more.' },
+          { title: 'Filters', text: 'Only after a confirmation, only with the 200 EMA trend, or only in the London and New York sessions.' },
+          { title: 'Alerts', text: 'Turn on alerts so TradingView or MT5 tells you when an arrow appears.' },
+          { title: 'Test it before you trust it', text: 'Scroll years of real history on the MarkIQ SI chart and check every arrow, then paste it into TradingView and check it there too.' },
+        ],
+      },
+    ],
+    stepsHeading: 'How it works',
+    steps: ['Describe your indicator in plain words.', 'Check what it will draw and change anything you want.', 'See it on a real chart for any market and timeframe.', 'Copy it into TradingView or download it for MT5.'],
+    note: 'An indicator shows information. It does not place trades, and arrows on past candles do not guarantee future results. The Indicator Builder is in beta. ' + DISCLAIMER,
+    faqs: [
+      { q: 'Can I create a TradingView indicator without coding?', a: 'Yes. Describe it in plain words and MarkIQ SI writes the Pine Script v6 code for you. Copy it into the TradingView Pine Editor and press Add to chart.' },
+      { q: 'Does it work with MT5?', a: 'Yes. Download the .mq5 file, put it in the MQL5 Indicators folder, compile it in MetaEditor and drag it onto a chart. Lower-panel oscillators use MT5\'s built-in RSI, MACD or Stochastic.' },
+      { q: 'Do I need an account?', a: 'No. You can build, preview and export without an account. A free account lets you save your indicators.' },
+      { q: 'Is it free?', a: 'Yes, the Indicator Builder is free to use, with a fair daily limit on AI help.' },
+    ],
+    related: [
+      { href: '/bot-builder', label: 'Bot Builder', text: 'Turn the same rules into a tested bot.' },
+      { href: '/market-scanner', label: 'Market Scanner', text: 'Find the setups across many markets.' },
+      { href: '/courses/trading-automation', label: 'Automation course', text: 'Learn to build and test properly.' },
+    ],
+    schema: { kind: 'software', name: 'MarkIQ SI Indicator Builder', category: 'FinanceApplication' },
   },
 
   'market-scanner': {
@@ -204,9 +244,9 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
     description: 'In-person trading classes and a trading floor in Oke-Ilewo, Abeokuta, plus virtual sessions. Learn risk management, technical and fundamental analysis and trading automation.',
     eyebrow: 'MarkIQ SI Academy',
     h1: 'Learn to trade in person in Abeokuta',
-    lead: 'MarkIQ SI Academy runs physical classes and a trading floor in Abeokuta (Oke-Ilewo), with virtual sessions online. Four learning tracks take you from beginner to building your own trading bot.',
-    cta: { label: 'Ask about classes on WhatsApp', href: 'whatsapp' },
-    secondaryCta: { label: 'See the free tools', href: '/tools' },
+    lead: 'MarkIQ SI Academy runs physical classes and a trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, with virtual sessions online. Four learning tracks take you from beginner to building your own trading bot.',
+    cta: { label: 'See courses and prices', href: '/courses' },
+    secondaryCta: { label: 'Ask on WhatsApp', href: 'whatsapp' },
     sections: [
       {
         heading: 'Four learning tracks',
@@ -220,7 +260,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
       {
         heading: 'Classes that fit you',
         items: [
-          { title: 'Physical classes in Abeokuta', text: 'Learn in person with a mentor, with a trading floor in Oke-Ilewo, Abeokuta, Ogun State.' },
+          { title: 'Physical classes in Abeokuta', text: 'Learn in person with a mentor on our trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State.' },
           { title: 'Virtual sessions', text: 'Join online if you are outside Abeokuta, and ask a mentor your questions.' },
           { title: 'Free tools alongside', text: 'Practise with the Risk Calculator, charts with bar replay, the Market Scanner, the Bot Builder and the Trading Journal.' },
         ],
@@ -228,11 +268,12 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
     ],
     note: 'Message or call +234 901 677 1255 to ask about the next class and how to join. ' + DISCLAIMER,
     faqs: [
-      { q: 'Where are the MarkIQ SI Academy physical classes?', a: 'In Oke-Ilewo, Abeokuta, Ogun State, Nigeria. Contact us on WhatsApp or by phone for the exact location and the next class.' },
+      { q: 'Where are the MarkIQ SI Academy physical classes?', a: 'At 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State, Nigeria. Message us on WhatsApp for the next class date.' },
       { q: 'Can I join online instead?', a: 'Yes. The Academy also runs virtual sessions, so you can learn from anywhere.' },
       { q: 'What can I learn?', a: 'Four tracks: Risk Management, Technical Analysis, Fundamental Analysis and Trading Automation, from beginner to advanced.' },
       { q: 'Do I need experience?', a: 'No. The tracks start at beginner level.' },
-      { q: 'How do I enrol or ask about fees?', a: 'Message or call +234 901 677 1255, or email markiqsi2@gmail.com, and the team will guide you.' },
+      { q: 'How much are the courses?', a: 'Every course outline and its price, in Naira and US dollars, is on the Courses page at markiqsi.com/courses. Physical classes are priced in Naira.' },
+      { q: 'How do I enrol?', a: 'Choose a course on the Courses page, sign in with your email and enrol. You can also message or call +234 901 677 1255.' },
     ],
     related: [
       { href: '/fundamental-analysis', label: 'Fundamental analysis', text: 'See how the news is explained in plain words.' },
@@ -243,4 +284,4 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
   },
 };
 
-export const FEATURE_ORDER = ['fundamental-analysis', 'bot-builder', 'market-scanner', 'prop-firm-tools', 'academy'] as const;
+export const FEATURE_ORDER = ['fundamental-analysis', 'bot-builder', 'indicator-builder', 'market-scanner', 'prop-firm-tools', 'academy'] as const;

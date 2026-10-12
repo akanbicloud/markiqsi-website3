@@ -8,7 +8,7 @@ import { toPine } from '@/lib/trading/codegen-pine';
 import { BacktestReplay, BacktestReport, type BTData } from './BacktestShow';
 
 
-const EXAMPLE = 'Trade EURUSD on the 15-minute chart. After a liquidity sweep, enter on the fair value gap, only during London and New York, and only with the 200 EMA trend. Stop loss 15 pips, take profit 30 pips. Risk 1% per trade.';
+const EXAMPLE = 'Trade EURUSD on the 15-minute chart. After a liquidity sweep, enter on the fair value gap, only during London and New York, and only with the 200 EMA trend. Stop loss 15 pips, take profit 30 pips, move the stop to break even after 15 pips. Risk 1% per trade.';
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
@@ -183,6 +183,8 @@ export function BotBuilder({ signedIn }: { signedIn: boolean }) {
                   <label className="field">Risk %<input className="input" type="number" step="0.1" value={rules.riskPercent} onChange={(ev) => upd({ riskPercent: +ev.target.value })} /></label>
                   <label className="field">Max trades a day<input className="input" type="number" value={rules.maxTradesPerDay} onChange={(ev) => upd({ maxTradesPerDay: +ev.target.value })} /></label>
                   <label className="field">Daily loss limit %<input className="input" type="number" step="0.5" value={rules.dailyLossPercent} onChange={(ev) => upd({ dailyLossPercent: +ev.target.value })} /></label>
+                  <label className="field">Break-even after (pips, 0 = off)<input className="input" type="number" value={rules.breakEvenPips} onChange={(ev) => upd({ breakEvenPips: +ev.target.value })} /></label>
+                  <label className="field">Trailing stop (pips, 0 = off)<input className="input" type="number" value={rules.trailPips} onChange={(ev) => upd({ trailPips: +ev.target.value })} /></label>
                 </div>
               </details>
               <span style={{ fontWeight: 700, fontSize: 18, marginTop: 6 }}>3 · Get your bot</span>

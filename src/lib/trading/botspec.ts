@@ -28,6 +28,10 @@ export type Rules = {
   riskPercent: number;
   maxTradesPerDay: number;
   dailyLossPercent: number;
+  /** Move the stop to entry + 1 pip once price has moved this many pips in profit. 0 = off. */
+  breakEvenPips: number;
+  /** Trail the stop this many pips behind the best price once it is in profit. 0 = off. */
+  trailPips: number;
 };
 
 export const TIMEFRAME_LABEL: Record<Timeframe, string> = { M1: '1-minute', M5: '5-minute', M15: '15-minute', M30: '30-minute', H1: '1-hour', H4: '4-hour', D1: 'daily', W1: 'weekly', MN1: 'monthly' };
@@ -90,6 +94,8 @@ export const DEFAULT_RULES: Rules = {
   riskPercent: 1,
   maxTradesPerDay: 3,
   dailyLossPercent: 3,
+  breakEvenPips: 0,
+  trailPips: 0,
 };
 
 const int = (v: unknown, d: number, lo: number, hi: number) => {
@@ -137,6 +143,8 @@ export function sanitizeRules(r: Partial<Rules> | null | undefined): Rules {
     riskPercent: num(x.riskPercent, 1, 0.1, 10),
     maxTradesPerDay: int(x.maxTradesPerDay, 3, 1, 50),
     dailyLossPercent: num(x.dailyLossPercent, 3, 0.5, 50),
+    breakEvenPips: num(x.breakEvenPips, 0, 0, 5000),
+    trailPips: num(x.trailPips, 0, 0, 5000),
   };
 }
 
@@ -212,8 +220,16 @@ export function parseStrategy(text: string): { rules: Rules; understood: string[
   if (!entryFound && patterns.length) {
     // the LAST pattern mentioned is usually the entry trigger ("after a sweep, enter on the FVG")
     const order = patterns.map((k) => ({ k, i: t.search(PATTERN_WORDS.find(([, kk]) => kk === k)![0]) })).sort((a, b) => a.i - b.i);
-    r.entry = { kind: order[order.length - 1].k };
-    if (order.length > 1) r.confirm = { kind: order[order.length - 2].k, within: 10 };
+    let entryK = order[order.length - 1].k;
+    let confK = order.length > 1 ? order[order.length - 2].k : null;
+    // "...on the FVG after a liquidity sweep": the pattern before "after" is the entry.
+    if (confK && order.length > 1) {
+      const a = order[order.length - 2].i, b = order[order.length - 1].i;
+      const afterAt = t.slice(a, b).search(/\bafter\b/i);
+      if (afterAt >= 0) [entryK, confK] = [confK, entryK];
+    }
+    r.entry = { kind: entryK };
+    if (confK) r.confirm = { kind: confK, within: 10 };
     entryFound = true;
     r.direction = wantsBuy && !wantsSell ? 'long' : wantsSell && !wantsBuy ? 'short' : 'both';
     const bb = t.match(/bollinger[^.]*?\(?\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)/i);
@@ -253,6 +269,10 @@ export function parseStrategy(text: string): { rules: Rules; understood: string[
   if (risk) { r.riskPercent = +risk[1]; understood.push('risk'); } else questions.push('How much of your account should it risk per trade? (most traders use 1%)');
   const mx = t.match(/(?:max(?:imum)?|no more than|up to)\s*(\d+)\s*trades?/i);
   if (mx) r.maxTradesPerDay = +mx[1];
+  const be = t.match(/break[- ]?even[^.]*?(\d+(?:\.\d+)?)\s*pips?/i) || t.match(/(\d+(?:\.\d+)?)\s*pips?[^.]*?break[- ]?even/i);
+  if (be) r.breakEvenPips = +be[1];
+  const tr = t.match(/trail(?:ing)?(?: stop)?[^.]*?(\d+(?:\.\d+)?)\s*pips?/i) || t.match(/(\d+(?:\.\d+)?)\s*pips?\s*trail/i);
+  if (tr) r.trailPips = +tr[1];
 
   return { rules: sanitizeRules(r), understood, questions, confident: entryFound };
 }
@@ -292,6 +312,7 @@ export function describeRules(r: Rules) {
     ...(filters ? [{ k: 'Filters', v: filters }] : []),
     { k: 'Stop loss', v: `${r.stopLossPips} pips` },
     { k: 'Take profit', v: `${r.takeProfitPips} pips` },
+    ...(r.breakEvenPips || r.trailPips ? [{ k: 'Trade management', v: [r.breakEvenPips ? `Stop moves to break-even (+1 pip) after ${r.breakEvenPips} pips in profit` : '', r.trailPips ? `Stop trails ${r.trailPips} pips behind the best price once in profit` : ''].filter(Boolean).join(' · ') }] : []),
     { k: 'Risk', v: `${r.riskPercent}% per trade` },
     { k: 'Safety limits', v: `Max ${r.maxTradesPerDay} trades a day · stops for the day after a ${r.dailyLossPercent}% loss · one trade at a time` },
   ];

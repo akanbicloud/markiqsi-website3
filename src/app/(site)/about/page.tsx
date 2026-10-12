@@ -46,7 +46,7 @@ const AUDIENCE = [
 
 const ROAD = [
   { stage: 'Available at launch', on: true, items: ['Telegram market alerts from official data', 'Markets: events, rates and news', 'Risk Calculator and Prop Challenge Tracker', 'Charts and the Trading Journal'] },
-  { stage: 'In beta', on: false, items: ['Market Scanner with Telegram alerts', 'Bot Builder with backtesting', 'Ask MarkIQ', 'Academy courses and classes'] },
+  { stage: 'In beta', on: false, items: ['Market Scanner with Telegram alerts', 'Bot Builder with backtesting, break-even and trailing stops', 'Indicator Builder for TradingView and MT5', 'Chart Analysis from a screenshot', 'Ask MarkIQ', 'Academy courses and classes in Abeokuta and online'] },
   { stage: 'Coming next', on: false, items: ['A community for MarkIQ SI traders', 'A marketplace to publish and sell bots and indicators', 'Weekly research and market outlooks', 'Certificates for completed courses'] },
 ];
 

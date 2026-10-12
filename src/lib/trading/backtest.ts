@@ -20,6 +20,8 @@ export type BacktestResult = {
   assumptions: string[];
   /** Every closed trade, in order, for the replay and the report card. */
   log: TradeLog[];
+  /** First 70% of the history (where rules are usually tuned) versus the last 30% (unseen). */
+  split: { cut: string; inSample: SplitStats; outOfSample: SplitStats } | null;
   stats: {
     avgWinMoney: number;
     avgLossMoney: number;
@@ -33,6 +35,8 @@ export type BacktestResult = {
   };
 };
 
+export type SplitStats = { trades: number; winRate: number; returnPct: number };
+
 export type TradeLog = {
   side: 'Buy' | 'Sell';
   entryIdx: number;
@@ -40,6 +44,8 @@ export type TradeLog = {
   entry: number;
   sl: number;
   tp: number;
+  /** Price the trade closed at (the target, the first stop, or a moved stop). */
+  exit: number;
   result: 'Win' | 'Loss';
   pips: number;
   money: number;
@@ -89,27 +95,40 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
     const sl = s === 1 ? entry - r.stopLossPips * pip : entry + r.stopLossPips * pip;
     const tp = s === 1 ? entry + r.takeProfitPips * pip : entry - r.takeProfitPips * pip;
     let exitIdx = -1;
+    let exitPx = 0;
     let result: 'Win' | 'Loss' | 'Open' = 'Open';
+    let stop = sl;
+    let best = entry;
     for (let j = entryBar; j < c.length; j++) {
-      const hitSl = s === 1 ? c[j].l <= sl : c[j].h >= sl;
+      // The stop in force during this candle is checked first (worst case), then the target.
+      const hitSl = s === 1 ? c[j].l <= stop : c[j].h >= stop;
       const hitTp = s === 1 ? c[j].h >= tp : c[j].l <= tp;
-      if (hitSl) { result = 'Loss'; exitIdx = j; break; }
-      if (hitTp) { result = 'Win'; exitIdx = j; break; }
+      if (hitSl) { exitPx = stop; exitIdx = j; result = (s === 1 ? stop - entry : entry - stop) > 0 ? 'Win' : 'Loss'; break; }
+      if (hitTp) { exitPx = tp; exitIdx = j; result = 'Win'; break; }
+      // Then move the stop for the NEXT candle (break-even and trailing), never backwards.
+      best = s === 1 ? Math.max(best, c[j].h) : Math.min(best, c[j].l);
+      const moved = s === 1 ? best - entry : entry - best;
+      if (r.breakEvenPips > 0 && moved >= r.breakEvenPips * pip) stop = s === 1 ? Math.max(stop, entry + pip) : Math.min(stop, entry - pip);
+      if (r.trailPips > 0) {
+        const ts = s === 1 ? best - r.trailPips * pip : best + r.trailPips * pip;
+        if (s === 1 && ts > entry && ts > stop) stop = ts;
+        if (s === -1 && ts < entry && ts < stop) stop = ts;
+      }
     }
     if (result === 'Open') {
       trades.push({ time: new Date(c[entryBar].t).toISOString(), side, result, pips: 0 });
       break;
     }
     const riskMoney = equity * (r.riskPercent / 100);
-    const pips = result === 'Win' ? r.takeProfitPips : -r.stopLossPips;
-    // spread is already inside the entry price, so the R multiple is exact
-    const money = result === 'Win' ? riskMoney * (r.takeProfitPips / r.stopLossPips) : -riskMoney;
+    // spread is already inside the entry price, so profit is measured from the real entry
+    const pips = Math.round(((s === 1 ? exitPx - entry : entry - exitPx) / pip) * 10) / 10;
+    const money = riskMoney * (pips / r.stopLossPips);
     equity += money;
-    if (result === 'Win') { wins++; grossWinPips += r.takeProfitPips; } else { losses++; grossLossPips += r.stopLossPips; }
+    if (result === 'Win') { wins++; grossWinPips += pips; } else { losses++; grossLossPips += -pips; }
     if (equity > peak) { peak = equity; peakIdx = exitIdx; }
     const dd = (peak - equity) / peak;
     if (dd > maxDd) { maxDd = dd; ddFrom = new Date(c[peakIdx].t).toISOString(); ddTo = new Date(c[exitIdx].t).toISOString(); }
-    log.push({ side, entryIdx: entryBar, exitIdx, entry, sl, tp, result, pips, money: Math.round(money * 100) / 100, equityAfter: Math.round(equity * 100) / 100,
+    log.push({ side, entryIdx: entryBar, exitIdx, entry, sl, tp, exit: exitPx, result, pips, money: Math.round(money * 100) / 100, equityAfter: Math.round(equity * 100) / 100,
       openTime: new Date(c[entryBar].t).toISOString(), closeTime: new Date(c[exitIdx].t).toISOString() });
     curve.push(Math.round(equity * 100) / 100);
     trades.push({ time: new Date(c[entryBar].t).toISOString(), side, result, pips });
@@ -142,6 +161,15 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
       eqStart = eqEnd;
     }
   }
+  const cutIdx = Math.floor(c.length * 0.7);
+  const part = (a: TradeLog[], eq0: number): SplitStats => {
+    if (!a.length) return { trades: 0, winRate: 0, returnPct: 0 };
+    const end = a[a.length - 1].equityAfter;
+    return { trades: a.length, winRate: Math.round((a.filter((t) => t.result === 'Win').length / a.length) * 1000) / 10, returnPct: Math.round(((end - eq0) / eq0) * 1000) / 10 };
+  };
+  const ins = log.filter((t) => t.entryIdx < cutIdx);
+  const oos = log.filter((t) => t.entryIdx >= cutIdx);
+  const split = c.length > 200 ? { cut: new Date(c[cutIdx].t).toISOString(), inSample: part(ins, start), outOfSample: part(oos, ins.length ? ins[ins.length - 1].equityAfter : start) } : null;
   const byMoney = [...log].sort((a, b) => b.money - a.money || a.exitIdx - b.exitIdx);
 
   const step = Math.max(1, Math.ceil(curve.length / 80));
@@ -165,10 +193,12 @@ export function backtest(r: Rules, c: Candle[], pip: number, spreadPips = 1): Ba
       `Starting balance $${start.toLocaleString('en-US')}, risking ${r.riskPercent}% per trade.`,
       `${spreadPips} pip spread cost on every trade.`,
       'Entry at the open of the candle after the signal.',
-      'If the stop and target are hit in the same candle, we count it as a loss.',
+      'If the stop and target are hit in the same candle, we count the stop as hit first.',
+      ...(r.breakEvenPips || r.trailPips ? ['Break-even and trailing stops move at the close of each candle, using that candle\'s high or low.'] : []),
       'No slippage, swaps or commissions beyond the spread.',
     ],
     log,
+    split,
     stats: {
       avgWinMoney: avg(winsL),
       avgLossMoney: avg(lossL),

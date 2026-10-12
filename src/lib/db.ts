@@ -201,6 +201,37 @@ const SCHEMA = [
     found_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
 
+  `CREATE TABLE IF NOT EXISTS mq_enrolments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES mq_users(id) ON DELETE CASCADE,
+    course_slug TEXT NOT NULL,
+    format TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    amount INT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    reference TEXT UNIQUE,
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    paid_at TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS mq_enrolments_user ON mq_enrolments (user_id, course_slug)`,
+  `CREATE TABLE IF NOT EXISTS mq_usage (
+    who TEXT NOT NULL,
+    feature TEXT NOT NULL,
+    day DATE NOT NULL,
+    count INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (who, feature, day)
+  )`,
+  `CREATE TABLE IF NOT EXISTS mq_indicators (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES mq_users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    spec JSONB NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+
   // ---------- Market data tables (the MARKET BOT writes these, the website reads them) ----------
   `CREATE TABLE IF NOT EXISTS mq_feed_state (
     key TEXT PRIMARY KEY,

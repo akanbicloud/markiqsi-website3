@@ -5,6 +5,7 @@ import { sanitizeRules } from '@/lib/trading/botspec';
 import { backtest } from '@/lib/trading/backtest';
 import { digitsFor, getBacktestCandles } from '@/lib/trading/prices';
 import { findSymbol, type TF } from '@/lib/trading/symbols';
+import { quotaMessage, takeQuota } from '@/lib/usage';
 
 export const maxDuration = 60;
 
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
   const sym = findSymbol(rules.symbol);
   if (!sym) return fail(`We do not have price history for ${rules.symbol} yet. Try EURUSD, GBPUSD, USDJPY, XAUUSD or BTCUSD.`);
   const tf = ({ M1: '1min', M5: '5min', M15: '15min', M30: '30min', H1: '1h', H4: '4h', D1: '1day', W1: '1week', MN1: '1month' } as Record<string, TF>)[rules.timeframe];
+  const quota = await takeQuota(req, 'backtest');
+  if (!quota.ok) return fail(quotaMessage(quota, 'backtests'), 429);
   try {
     const candles = await getBacktestCandles(sym, tf);
     if (candles.length < 200) return fail('Not enough price history to test this market.');
