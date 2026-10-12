@@ -4,8 +4,9 @@ export function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 }
 
-export function fail(message: string, status = 400) {
-  return json({ ok: false, error: message }, status);
+/** `detail` is a technical reason (already cleaned of secrets) shown in small print to help fix problems. */
+export function fail(message: string, status = 400, detail?: string) {
+  return json({ ok: false, error: message, ...(detail ? { detail } : {}) }, status);
 }
 
 export async function body<T = Record<string, unknown>>(req: Request): Promise<T> {

@@ -11,6 +11,8 @@ type Result = {
   structure: { lastClose: number; lastTime: string; trend: { bias: string }; structure: string; support: number[]; resistance: number[]; rsi14: number };
   analysis: { seen: string[]; matches: boolean; mismatch: string; structure: string[]; levels: { support: string[]; resistance: string[] }; fundamentals: string[]; scenarios: Scenario[]; leaning: string; watch: string[]; caution: string };
   remaining: number;
+  ai?: boolean;
+  aiNote?: string;
 };
 
 /** Shrinks the screenshot in the browser so uploads stay small and fast on mobile data. */
@@ -77,8 +79,9 @@ export function ChartAnalyzer({ signedIn }: { signedIn: boolean }) {
     setRes(null);
     try {
       const r = await fetch('/api/chart-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image, symbol: sym, tf, question }) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.ok) throw new Error(d.error || 'The chart could not be analysed.');
+      const d = await r.json().catch(() => null);
+      if (!d) throw new Error(r.status === 504 || r.status === 524 ? 'The analysis took too long. Please try again, or pick a higher timeframe.' : r.status === 413 ? 'That screenshot is too large. Please crop it and try again.' : `The chart could not be analysed (error ${r.status}). Please try again.`);
+      if (!r.ok || !d.ok) throw new Error(`${d.error || 'The chart could not be analysed.'}${d.detail ? ` (Reason: ${d.detail})` : ''}`);
       setRes(d as Result);
     } catch (e) {
       setErr((e as Error).message);
@@ -141,6 +144,7 @@ export function ChartAnalyzer({ signedIn }: { signedIn: boolean }) {
             <span className="display" style={{ fontWeight: 700, fontSize: 26 }}>{res.market} · {res.timeframe}</span>
             <span className="faint" style={{ fontSize: 14 }}>Last closed candle {res.structure.lastTime} at {res.structure.lastClose}</span>
           </div>
+          {res.ai === false && <div className="note note-warn"><strong>We could not read your screenshot just now,</strong> so this analysis comes from the real {res.market} price data and the news only.{res.aiNote ? <span style={{ display: 'block', fontSize: 13, marginTop: 4, opacity: 0.8 }}>Reason: {res.aiNote}</span> : null}</div>}
           {!a.matches && <div className="note note-warn"><strong>Check your choice:</strong> {a.mismatch || 'the screenshot may not be the market or timeframe you picked, so the levels below may not match your chart.'}</div>}
           {a.leaning && <div className="card" style={{ fontSize: 18, lineHeight: 1.5 }}><strong>Where the evidence leans:</strong> {a.leaning}</div>}
 
@@ -170,10 +174,12 @@ export function ChartAnalyzer({ signedIn }: { signedIn: boolean }) {
               <List items={a.fundamentals.length ? a.fundamentals : ['No major scheduled news in our data for this market this week.']} />
               <Link href="/markets" style={{ fontSize: 15 }}>See all events and rates »</Link>
             </div>
-            <div className="card stack" style={{ gap: 10, background: 'var(--inset)' }}>
-              <h3 className="h3" style={{ margin: 0, fontSize: 21 }}>What we see on your chart</h3>
-              <List items={a.seen} />
-            </div>
+            {a.seen.length > 0 && (
+              <div className="card stack" style={{ gap: 10, background: 'var(--inset)' }}>
+                <h3 className="h3" style={{ margin: 0, fontSize: 21 }}>What we see on your chart</h3>
+                <List items={a.seen} />
+              </div>
+            )}
             <div className="card stack" style={{ gap: 10, background: 'var(--inset)' }}>
               <h3 className="h3" style={{ margin: 0, fontSize: 21 }}>What to watch next</h3>
               <List items={a.watch} />

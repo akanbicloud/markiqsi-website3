@@ -126,3 +126,13 @@ test('break-even and trailing stops in the backtest, plus out-of-sample split', 
   assert.ok(long.split);
   assert.equal(long.split!.inSample.trades + long.split!.outOfSample.trades, long.log.length);
 });
+
+test('chart review falls back to real-data analysis', async () => {
+  const { analyzeStructure } = await import('../src/lib/trading/structure');
+  const { fromData } = await import('../src/lib/trading/chartreview');
+  const st = analyzeStructure(market(600), 5)!;
+  const a = fromData(st, [{ name: 'CPI', country: 'US', scheduled_at: '2026-10-15T12:30:00Z', impact: 'high' }], [{ bank: 'Federal Reserve', rate: 3.75, next_meeting: '2026-10-28' }]);
+  assert.equal(a.scenarios.length, 2);
+  assert.ok(a.fundamentals.some((f) => f.includes('CPI')));
+  assert.ok(a.leaning.length > 10);
+});
