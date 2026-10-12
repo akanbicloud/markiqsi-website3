@@ -14,7 +14,7 @@ Key facts:
 - [No-code Bot Builder](https://www.markiqsi.com/bot-builder): build your own trading bot without coding instead of buying bots that promise profit. Describe the strategy, check the rules, backtest on past data, test on a demo account, then deploy to MT5. No bot can guarantee profit.
 - [Market Scanner](https://www.markiqsi.com/market-scanner): supply and demand, ICT/SMC, candle patterns and indicators across many markets and timeframes, with news and rates beside each setup.
 - [Prop firm tools](https://www.markiqsi.com/prop-firm-tools): Prop Challenge Tracker (profit target, daily loss room, total loss room), Risk Calculator, Bot Builder with loss limits, Trading Journal.
-- [MarkIQ SI Academy](https://www.markiqsi.com/academy): physical classes and a trading floor in Oke-Ilewo, Abeokuta, Ogun State, Nigeria, plus virtual sessions. Four tracks: Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation.
+- [MarkIQ SI Academy](https://www.markiqsi.com/academy): physical classes and a trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State, Nigeria, plus virtual sessions. Course outlines and prices (Naira and US dollars): https://www.markiqsi.com/courses Four tracks: Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation.
 
 ## Main pages
 - [Home](https://www.markiqsi.com/): what MarkIQ SI offers and the four learning tracks (Risk Management, Technical Analysis, Fundamental Analysis, Trading Automation) plus live classes.

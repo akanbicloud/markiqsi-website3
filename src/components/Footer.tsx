@@ -22,6 +22,7 @@ export function Footer() {
             <Link href="/market-scanner">Market Scanner</Link>
             <Link href="/prop-firm-tools">Prop firm tools</Link>
             <Link href="/academy">Academy</Link>
+            <Link href="/courses">Courses</Link>
             <Link href="/about">About</Link>
             <Link href="/faqs">FAQs</Link>
             <Link href="/terms">Terms</Link>

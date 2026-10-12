@@ -52,7 +52,7 @@ function buildLd(p: FeaturePageContent) {
       telephone: SITE.phoneIntl,
       email: SITE.email,
       areaServed: 'Nigeria',
-      address: { '@type': 'PostalAddress', addressLocality: 'Abeokuta', addressRegion: 'Ogun State', addressCountry: 'NG' },
+      address: { '@type': 'PostalAddress', streetAddress: '24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo', addressLocality: 'Abeokuta', addressRegion: 'Ogun State', addressCountry: 'NG' },
     });
   } else {
     graph.push({ '@type': 'WebPage', name: p.title, description: p.description, url, isPartOf: { '@id': `${SITE.url}/#website` } });
@@ -116,7 +116,7 @@ export function FeaturePage({ slug }: { slug: string }) {
           <h2 className="display" style={{ fontWeight: 700, fontSize: 24 }}>Explore more</h2>
           <div className="grid g-3">
             {p.related.map((r) => (
-              <Link key={r.href} href={r.href} className="card stack" style={{ gap: 6 }}>
+              <Link key={r.href} href={r.href} className="card stack card-link" style={{ gap: 6 }}>
                 <strong>{r.label}</strong>
                 <span className="muted">{r.text}</span>
               </Link>

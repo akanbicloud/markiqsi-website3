@@ -204,9 +204,9 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
     description: 'In-person trading classes and a trading floor in Oke-Ilewo, Abeokuta, plus virtual sessions. Learn risk management, technical and fundamental analysis and trading automation.',
     eyebrow: 'MarkIQ SI Academy',
     h1: 'Learn to trade in person in Abeokuta',
-    lead: 'MarkIQ SI Academy runs physical classes and a trading floor in Abeokuta (Oke-Ilewo), with virtual sessions online. Four learning tracks take you from beginner to building your own trading bot.',
-    cta: { label: 'Ask about classes on WhatsApp', href: 'whatsapp' },
-    secondaryCta: { label: 'See the free tools', href: '/tools' },
+    lead: 'MarkIQ SI Academy runs physical classes and a trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, with virtual sessions online. Four learning tracks take you from beginner to building your own trading bot.',
+    cta: { label: 'See courses and prices', href: '/courses' },
+    secondaryCta: { label: 'Ask on WhatsApp', href: 'whatsapp' },
     sections: [
       {
         heading: 'Four learning tracks',
@@ -220,7 +220,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
       {
         heading: 'Classes that fit you',
         items: [
-          { title: 'Physical classes in Abeokuta', text: 'Learn in person with a mentor, with a trading floor in Oke-Ilewo, Abeokuta, Ogun State.' },
+          { title: 'Physical classes in Abeokuta', text: 'Learn in person with a mentor on our trading floor at 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State.' },
           { title: 'Virtual sessions', text: 'Join online if you are outside Abeokuta, and ask a mentor your questions.' },
           { title: 'Free tools alongside', text: 'Practise with the Risk Calculator, charts with bar replay, the Market Scanner, the Bot Builder and the Trading Journal.' },
         ],
@@ -228,11 +228,12 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
     ],
     note: 'Message or call +234 901 677 1255 to ask about the next class and how to join. ' + DISCLAIMER,
     faqs: [
-      { q: 'Where are the MarkIQ SI Academy physical classes?', a: 'In Oke-Ilewo, Abeokuta, Ogun State, Nigeria. Contact us on WhatsApp or by phone for the exact location and the next class.' },
+      { q: 'Where are the MarkIQ SI Academy physical classes?', a: 'At 24 Majek Kembo Plaza, beside Chicken Republic, Oke-Ilewo, Abeokuta, Ogun State, Nigeria. Message us on WhatsApp for the next class date.' },
       { q: 'Can I join online instead?', a: 'Yes. The Academy also runs virtual sessions, so you can learn from anywhere.' },
       { q: 'What can I learn?', a: 'Four tracks: Risk Management, Technical Analysis, Fundamental Analysis and Trading Automation, from beginner to advanced.' },
       { q: 'Do I need experience?', a: 'No. The tracks start at beginner level.' },
-      { q: 'How do I enrol or ask about fees?', a: 'Message or call +234 901 677 1255, or email markiqsi2@gmail.com, and the team will guide you.' },
+      { q: 'How much are the courses?', a: 'Every course outline and its price, in Naira and US dollars, is on the Courses page at markiqsi.com/courses. Physical classes are priced in Naira.' },
+      { q: 'How do I enrol?', a: 'Choose a course on the Courses page, sign in with your email and enrol. You can also message or call +234 901 677 1255.' },
     ],
     related: [
       { href: '/fundamental-analysis', label: 'Fundamental analysis', text: 'See how the news is explained in plain words.' },

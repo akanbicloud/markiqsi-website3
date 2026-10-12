@@ -14,7 +14,13 @@ export function ConfirmLogin({ token }: { token: string }) {
       const r = await fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
-      window.location.href = d.next || '/account';
+      let back = '';
+      try {
+        back = localStorage.getItem('mq_next') || '';
+        localStorage.removeItem('mq_next');
+      } catch {}
+      // Send people back to the course they were enrolling in, once they have finished onboarding.
+      window.location.href = d.next === '/account' && back.startsWith('/') && !back.startsWith('//') ? back : d.next || '/account';
     } catch (e) {
       setErr((e as Error).message);
       setBusy(false);
