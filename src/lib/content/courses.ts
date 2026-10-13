@@ -143,7 +143,7 @@ export const COURSES: Course[] = [
       { week: 'Weeks 17 to 18', title: 'Supervised practice and review', lessons: ['Mentored sessions on the trading floor or online', 'Reviewing your journal statistics', 'Your next 90 days'] },
     ],
     tools: [T.charts, T.scan, T.ind, T.bot, T.risk, T.prop, T.journal, T.markets],
-    bundle: ['beginner-market-foundations', 'intermediate-forex-analysis', 'fundamental-analysis', 'trading-automation', 'prop-firm-preparation', 'risk-management'],
+    bundle: ['beginner-market-foundations', 'intermediate-forex-analysis', 'fundamental-analysis', 'trading-automation'],
   },
   {
     slug: 'fundamental-analysis',
@@ -179,37 +179,6 @@ export const COURSES: Course[] = [
     ],
     tools: [T.bot, T.ind, T.charts, T.risk],
   },
-  {
-    slug: 'prop-firm-preparation',
-    title: 'Prop Firm Challenge Preparation',
-    short: 'Understand prop firm rules and build a risk plan that respects daily and total loss limits.',
-    level: 'Intermediate',
-    weeks: 3,
-    price: { onlineNgn: 40000, onlineUsd: 30, physicalNgn: 55000 },
-    forWho: 'Traders planning a prop firm challenge. No course can promise you will pass.',
-    outcomes: ['Understand how challenges and funded accounts work', 'Build a risk plan around daily and total loss limits', 'Track a challenge day by day', 'Know the common reasons people fail'],
-    outline: [
-      { week: 'Week 1', title: 'How prop firms work', lessons: ['Challenges, phases and funded accounts', 'Daily loss, total drawdown and consistency rules', 'Choosing a firm and reading its rules'] },
-      { week: 'Week 2', title: 'Your risk plan', lessons: ['Risk per trade for a challenge', 'Surviving a losing streak', 'News rules and weekend holding'], practice: 'Set up the Prop Challenge Tracker with your firm\'s rules.' },
-      { week: 'Week 3', title: 'Execution and review', lessons: ['Daily routine during a challenge', 'When to stop for the day', 'Reviewing your journal'], practice: 'Run a two-week mock challenge on demo.' },
-    ],
-    tools: [T.prop, T.risk, T.journal, T.bot],
-  },
-  {
-    slug: 'risk-management',
-    title: 'Risk Management and Trading Psychology',
-    short: 'The skill that keeps traders in the game: position sizing, stop losses and discipline.',
-    level: 'All levels',
-    weeks: 2,
-    price: { onlineNgn: 20000, onlineUsd: 15, physicalNgn: 28000 },
-    forWho: 'Every trader, at any level.',
-    outcomes: ['Size every position correctly', 'Place stops that make sense', 'Control fear, greed and revenge trading', 'Keep a journal that improves your trading'],
-    outline: [
-      { week: 'Week 1', title: 'Risk', lessons: ['Position sizing', 'Stop losses and risk to reward', 'Drawdown and how to recover'], practice: 'Size ten trades with the Risk Calculator.' },
-      { week: 'Week 2', title: 'Psychology', lessons: ['Fear, greed and overtrading', 'Rules for bad days', 'Journalling and review'], practice: 'Journal every demo trade for a week.' },
-    ],
-    tools: [T.risk, T.journal],
-  },
 ];
 
 /** Courses that were renamed or merged keep working at their old addresses. */
@@ -217,6 +186,9 @@ export const OLD_SLUGS: Record<string, string> = {
   'intermediate-strategy-and-risk': 'intermediate-forex-analysis',
   'pro-advanced-strategy': 'pro-forex-trader',
   'full-path': 'pro-forex-trader',
+  // Taught inside the Pro programme now, no longer sold on their own.
+  'prop-firm-preparation': 'pro-forex-trader',
+  'risk-management': 'pro-forex-trader',
 };
 
 export function findCourse(slug: string) {
