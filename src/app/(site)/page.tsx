@@ -82,7 +82,7 @@ export default function Home() {
           </Reveal>
           <RevealGroup className="grid g-3" style={{ gap: 20 }}>
             {PATHS.map((p) => (
-              <RevealItem key={p.title} className="stack" style={{ borderRadius: 36, padding: '52px 40px', gap: 28, background: p.bg, color: p.dark ? '#0B1A36' : '#FFFFFF' }}>
+              <RevealItem key={p.title} className="stack card-click" style={{ borderRadius: 36, padding: '52px 40px', gap: 28, background: p.bg, color: p.dark ? '#0B1A36' : '#FFFFFF' }}>
                 <h3 className="display" style={{ fontSize: 40, lineHeight: 1.02 }}>{p.title}</h3>
                 <div className="stack" style={{ gap: 14 }}>
                   {p.items.map((i) => (
@@ -92,7 +92,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <Link href={p.href} className={`btn ${p.dark ? '' : 'btn-white'}`} style={{ alignSelf: 'flex-start', marginTop: 'auto', ...(p.dark ? { background: '#0B1A36', color: '#FFFFFF' } : {}) }}>
+                <Link href={p.href} className={`btn stretch-link ${p.dark ? '' : 'btn-white'}`} style={{ alignSelf: 'flex-start', marginTop: 'auto', ...(p.dark ? { background: '#0B1A36', color: '#FFFFFF' } : {}) }}>
                   {p.cta} <span aria-hidden="true">»</span>
                 </Link>
               </RevealItem>
