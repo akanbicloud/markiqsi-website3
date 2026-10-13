@@ -1,3 +1,4 @@
+import { OLD_SLUGS } from '../content/courses';
 import { db } from '../db';
 
 export type Enrolment = { id: number; course_slug: string; format: string; currency: string; amount: number; status: string; reference: string | null; created_at: string; paid_at: string | null };
@@ -7,10 +8,11 @@ export async function enrolmentsFor(userId: number): Promise<Enrolment[]> {
   return (await q`SELECT id, course_slug, format, currency, amount, status, reference, created_at, paid_at FROM mq_enrolments WHERE user_id = ${userId} ORDER BY created_at DESC`) as Enrolment[];
 }
 
-/** A full-path enrolment also unlocks the three courses it contains. */
+/** The Pro programme also unlocks every course it contains. Old (renamed) slugs count as the new ones. */
 export async function hasAccess(userId: number, slug: string, bundles: Record<string, string[]>) {
   const rows = (await enrolmentsFor(userId)).filter((e) => e.status === 'active');
-  return rows.some((e) => e.course_slug === slug || (bundles[e.course_slug] || []).includes(slug));
+  const norm = (x: string) => OLD_SLUGS[x] || x;
+  return rows.some((e) => norm(e.course_slug) === slug || (bundles[norm(e.course_slug)] || []).includes(slug));
 }
 
 /** Marks a payment reference as paid if the amount and currency match. Returns the course slug. */
