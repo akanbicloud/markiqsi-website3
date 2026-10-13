@@ -219,7 +219,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
           { title: 'Bot Builder with loss limits', text: 'If you automate, build your bot with a daily loss limit and risk limits so it respects your rules.' },
           { title: 'Trading Journal', text: 'Log every trade, see your results on a calendar and find out what actually works.' },
           { title: 'Charts with bar replay', text: 'Practise on years of price history, one candle at a time, before you take the setup in a challenge.' },
-          { title: 'Risk Management course', text: 'Learn position sizing, stop losses and trading psychology in the Academy.' },
+          { title: 'Learn it in the Academy', text: 'Position sizing, stop losses, trading psychology and prop firm preparation are taught in the Pro: Complete Forex Trader Program.' },
         ],
       },
     ],
@@ -233,7 +233,7 @@ export const FEATURE_PAGES: Record<string, FeaturePageContent> = {
     related: [
       { href: '/bot-builder', label: 'Bot Builder', text: 'Automate with a daily loss limit.' },
       { href: '/market-scanner', label: 'Market Scanner', text: 'Find setups across many markets.' },
-      { href: '/academy', label: 'Academy', text: 'Risk Management is a full learning track.' },
+      { href: '/courses/pro-forex-trader', label: 'Pro programme', text: 'Includes risk management and prop firm preparation.' },
     ],
     schema: { kind: 'software', name: 'MarkIQ SI Prop Challenge Tracker and Risk Calculator', category: 'FinanceApplication' },
   },
