@@ -113,7 +113,7 @@ export default function AboutPage() {
             {PILLARS.map((x) => {
               const light = x.fg === '#FFFFFF';
               return (
-                <article key={x.n} className="stack stripes" style={{ borderRadius: 30, padding: 30, gap: 14, color: x.fg, backgroundColor: x.bg }}>
+                <article key={x.n} className="stack stripes card-click" style={{ borderRadius: 30, padding: 30, gap: 14, color: x.fg, backgroundColor: x.bg }}>
                   <span className="mono" style={{ fontSize: 13, letterSpacing: '0.12em', opacity: 0.85 }}>{x.n}</span>
                   <span className="display" style={{ fontWeight: 700, fontSize: 28, lineHeight: 1.1 }}>{x.title}</span>
                   <span style={{ fontSize: 17, opacity: 0.92 }}>{x.text}</span>
@@ -125,7 +125,7 @@ export default function AboutPage() {
                       </div>
                     ))}
                   </div>
-                  <Link href={x.href} className={`btn btn-sm ${light ? 'btn-white' : ''}`} style={{ marginTop: 'auto', alignSelf: 'flex-start', ...(light ? {} : { background: '#0B1A36', color: '#FFFFFF' }) }}>
+                  <Link href={x.href} className={`btn btn-sm stretch-link ${light ? 'btn-white' : ''}`} style={{ marginTop: 'auto', alignSelf: 'flex-start', ...(light ? {} : { background: '#0B1A36', color: '#FFFFFF' }) }}>
                     {x.cta} <span aria-hidden="true">»</span>
                   </Link>
                 </article>
