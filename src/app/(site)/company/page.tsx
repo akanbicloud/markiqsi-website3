@@ -114,7 +114,7 @@ export default function CompanyPage() {
         {COMPANY.press.length > 0 && (
           <section className="stack" style={{ gap: 12 }}>
             <H>In the press</H>
-            <ul style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 8 }}>{COMPANY.press.map((p) => <li key={p.url}><a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a> · {p.outlet}</li>)}</ul>
+            <ul style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 8 }}>{COMPANY.press.map((p) => <li key={p.url}><a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a> · {p.outlet}, {new Date(p.date + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}{p.author ? `, by ${p.author}` : ''}</li>)}</ul>
           </section>
         )}
 

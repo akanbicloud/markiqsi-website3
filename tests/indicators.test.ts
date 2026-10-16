@@ -127,12 +127,57 @@ test('break-even and trailing stops in the backtest, plus out-of-sample split', 
   assert.equal(long.split!.inSample.trades + long.split!.outOfSample.trades, long.log.length);
 });
 
-test('chart review falls back to real-data analysis', async () => {
+test('chart brain: zones, evidence, plans and the real-data fallback', async () => {
   const { analyzeStructure } = await import('../src/lib/trading/structure');
   const { fromData } = await import('../src/lib/trading/chartreview');
-  const st = analyzeStructure(market(600), 5)!;
-  const a = fromData(st, [{ name: 'CPI', country: 'US', scheduled_at: '2026-10-15T12:30:00Z', impact: 'high' }], [{ bank: 'Federal Reserve', rate: 3.75, next_meeting: '2026-10-28' }]);
-  assert.equal(a.scenarios.length, 2);
+  const B = await import('../src/lib/trading/chartbrain');
+  const { SYMBOLS } = await import('../src/lib/trading/symbols');
+  const sym = SYMBOLS.find((x) => x.key === 'EURUSD')!;
+  const c = market(600);
+  const st = analyzeStructure(c, 5)!;
+  const htf = market(400);
+  const { zones, atr } = B.buildZones(sym, c, '1H', htf, '4H', null, 5, c[c.length - 1].t + 3600000);
+  const last = c[c.length - 1].c;
+  assert.ok(zones.length >= 2);
+  for (const z of zones) {
+    assert.ok(z.low <= z.price && z.price <= z.high);
+    assert.equal(z.side === 'resistance', z.price >= last);
+    assert.ok(z.reasons.length >= 1);
+  }
+  assert.ok(zones.some((z) => z.id === 'R1') || zones.some((z) => z.id === 'S1'));
+  const rates = [{ bank: 'ECB', currency: 'EUR', rate: 2.0 }, { bank: 'Federal Reserve', currency: 'USD', rate: 3.75, next_meeting: '2026-10-28' }];
+  const gap = B.rateGapOf(sym, rates)!;
+  assert.equal(gap.gap, -1.75);
+  const checks = B.buildChecks({ ltf: st, ltfLabel: '1H', htf: B.htfView(analyzeStructure(htf, 5), '4h', '4H'), zones, atr, digits: 5, rateGap: gap, newsSoon: ['CPI (USD) at 12:30 UTC'] });
+  assert.ok(checks.some((x) => x.label === 'Interest-rate gap' && x.lean === 'bearish'));
+  assert.ok(checks.some((x) => x.label === 'News risk' && x.lean === 'caution'));
+  const ev = B.evidenceOf(checks);
+  const plans = B.buildPlans(zones, atr, 5, last, ev.lean);
+  assert.ok(plans.length >= 1 && plans.length <= 3);
+  for (const p of plans) {
+    if (p.bias === 'Bullish') assert.ok(p.invalidation < p.trigger);
+    else assert.ok(p.invalidation > p.trigger);
+    if (p.rr != null) assert.ok(p.rr > 0);
+  }
+  const brain = { htf: null, zones, checks, evidence: ev, plans, atr, atrPips: 10, rateGap: gap, newsSoon: [], chart: c.slice(-160) };
+  const a = fromData(st, brain, [{ name: 'CPI', country: 'US', scheduled_at: '2026-10-15T12:30:00Z', impact: 'high' }], rates, '1H');
+  assert.ok(a.story.length > 20);
   assert.ok(a.fundamentals.some((f) => f.includes('CPI')));
   assert.ok(a.leaning.length > 10);
+});
+
+test('chart review AI text keeps only numbers from the data', async () => {
+  const { allowedNumbers, cleanAnalysis } = await import('../src/lib/trading/chartreview');
+  const allowed = allowedNumbers({ zones: [{ id: 'R1', price: 1.0912 }], rsi: 61 });
+  const a = cleanAnalysis({
+    story: 'Price is pressing into R1 at 1.0912. A move to 1.1500 is coming. RSI is 61, so buyers lead.',
+    plans: [{ id: 'A', explain: 'Wait for a close above R1. Buy now before it runs.' }, { id: 'Z', explain: 'ignored' }],
+    watch: ['Target 1.2000 next week.', 'A close above 1.0912.'],
+  }, allowed);
+  assert.match(a.story, /1\.0912/);
+  assert.doesNotMatch(a.story, /1\.15/);
+  assert.match(a.story, /RSI is 61/);
+  assert.equal(a.planNotes.A, 'Wait for a close above R1.');
+  assert.equal(a.planNotes.Z, undefined);
+  assert.deepEqual(a.watch, ['A close above 1.0912.']);
 });

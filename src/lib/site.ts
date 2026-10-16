@@ -36,6 +36,15 @@ export const COMPANY = {
   },
   linkedinPage: '',
   googleBusinessProfile: '',
-  /** Independent articles about MarkIQ SI: { title, outlet, url }. */
-  press: [] as { title: string; outlet: string; url: string }[],
+  /** Independent articles about MarkIQ SI. */
+  press: [
+    {
+      title: 'MarkIQ SI Launches in Abeokuta With a Trading Academy and a Bot Builder',
+      outlet: 'Trax',
+      publisher: 'Trax Media Ltd',
+      author: 'Ben Sam Oladoyin',
+      date: '2026-10-14',
+      url: 'https://www.trax.ng/articles/markiq-si-launches-in-abeokuta-with-a-trading-academy-and-a-bot-builder',
+    },
+  ] as { title: string; outlet: string; publisher: string; author: string; date: string; url: string }[],
 };
