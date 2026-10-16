@@ -28,3 +28,11 @@ test('ask brain: platform facts carry the real course prices', async () => {
   assert.match(pro!.physical, /250,000/);
   assert.match(f.academy.address, /Majek Kembo Plaza/);
 });
+
+test('ask brain: finds the event in a history question', async () => {
+  const { eventPatterns } = await import('../src/lib/askbrain');
+  assert.deepEqual(eventPatterns('what happened to gold when CPI was higher than expected'), ['%CPI%']);
+  assert.deepEqual(eventPatterns('core inflation surprise'), ['%Core CPI%']);
+  assert.deepEqual(eventPatterns('how does NFP move EURUSD'), ['%Non-Farm%']);
+  assert.deepEqual(eventPatterns('what is a pip'), []);
+});

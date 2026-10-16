@@ -86,7 +86,27 @@ async function priceSnapshot(q: Awaited<ReturnType<typeof db>>, asset: Asset) {
   };
 }
 
+const EVENT_WORDS: [RegExp, string][] = [
+  [/\b(core\s+cpi|core\s+inflation)\b/i, '%Core CPI%'],
+  [/\b(cpi|inflation)\b/i, '%CPI%'],
+  [/\b(nfp|non[- ]?farm|payrolls?|jobs report)\b/i, '%Non-Farm%'],
+  [/\bunemployment rate\b/i, '%Unemployment Rate%'],
+  [/\b(jobless|claims)\b/i, '%Claims%'],
+  [/\bretail sales\b/i, '%Retail Sales%'],
+  [/\bgdp\b/i, '%GDP%'],
+  [/\bpce\b/i, '%PCE%'],
+  [/\bppi\b/i, '%PPI%'],
+  [/\b(fed|fomc|rate decision|interest rate decision|rate hike|rate cut)\b/i, '%rate decision%'],
+];
+
+export function eventPatterns(question: string): string[] {
+  const out: string[] = [];
+  for (const [re, pat] of EVENT_WORDS) if (re.test(question) && !out.includes(pat)) out.push(pat);
+  return out.includes('%Core CPI%') ? out.filter((p) => p !== '%CPI%') : out;
+}
+
 export async function gatherData(question: string, assets: Asset[]) {
+  const evPats = eventPatterns(question);
   const q = await db();
   const currencies = [...new Set(assets.flatMap((a) => a.currencies))];
   const countries = [...new Set(assets.flatMap((a) => a.countries))];
@@ -100,8 +120,11 @@ export async function gatherData(question: string, assets: Asset[]) {
       : q`SELECT country, name, actual, forecast, previous, verdict, source, released_at FROM mi_results WHERE released_at > now() - interval '21 days' ORDER BY released_at DESC LIMIT 15`,
     q`SELECT bank, currency, rate, last_change, to_char(last_change_date, 'YYYY-MM-DD') AS last_change_date, to_char(next_meeting, 'YYYY-MM-DD') AS next_meeting FROM mi_rates ORDER BY bank`,
     q`SELECT category, tag, title, left(body, 280) AS body, reaction, source, published_at FROM mi_news WHERE published_at > now() - interval '3 days' ORDER BY published_at DESC LIMIT 12`,
-    scoped
-      ? q`SELECT event_name, released_at, actual, forecast, previous, surprise, asset, move_15m, move_1h, move_1d FROM mi_reactions WHERE asset ILIKE ANY(${assets.flatMap((a) => [`%${a.key}%`, `%${a.key.replace('/', '')}%`, ...(a.key === 'Gold' ? ['%XAU%'] : [])])}) ORDER BY released_at DESC LIMIT 40`
+    scoped || evPats.length
+      ? q`SELECT event_name, released_at, actual, forecast, previous, surprise, asset, move_15m, move_1h, move_1d FROM mi_reactions
+          WHERE (${!scoped} OR asset ILIKE ANY(${assets.flatMap((a) => [`%${a.key}%`, `%${a.key.replace('/', '')}%`, ...(a.key === 'Gold' ? ['%XAU%'] : [])])}))
+            AND (${!evPats.length} OR event_name ILIKE ANY(${evPats.length ? evPats : ['%']}))
+          ORDER BY released_at DESC LIMIT 60`
       : Promise.resolve([]),
     Promise.all(assets.map((a) => priceSnapshot(q, a).catch(() => null))),
   ]);
