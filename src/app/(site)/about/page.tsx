@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Founder } from '@/components/Founder';
 import { HelpBlock } from '@/components/HelpBlock';
-import { SITE } from '@/lib/site';
+import { COMPANY, SITE } from '@/lib/site';
 import { RevealSection } from '@/components/motion/Reveal';
 
 export const metadata: Metadata = { title: 'About', description: 'MarkIQ SI is a market intelligence platform and trading academy founded by Oloyede Naheem Pelumi. Learn what we do, how we use official data, and how we build trading technology.', alternates: { canonical: '/about' }, openGraph: { title: 'About · MarkIQ SI', description: 'MarkIQ SI is a market intelligence platform and trading academy founded by Oloyede Naheem Pelumi. Learn what we do, how we use official data, and how we build trading technology.', url: '/about', images: ['/og.png'] } };
@@ -74,6 +74,11 @@ export default function AboutPage() {
           <p className="lead rise d1" style={{ maxWidth: 860, lineHeight: 1.55 }}>
             MarkIQ SI is a market intelligence platform and trading academy. We turn official economic data and world news into clear, timely alerts. We teach traders from their first lesson to their first trading bot. And we give them professional tools to plan, test and manage every trade.
           </p>
+          {COMPANY.press[0] && (
+            <a className="rise d1" href={COMPANY.press[0].url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16 }}>
+              As featured in {COMPANY.press[0].outlet}: &ldquo;{COMPANY.press[0].title}&rdquo; »
+            </a>
+          )}
         </div>
       </section>
 

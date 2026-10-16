@@ -1,8 +1,29 @@
-/** `images` are base64 (no data: prefix) with their MIME type, e.g. a chart screenshot. */
-export async function gemini(system: string, user: string, opts: { json?: boolean; maxTokens?: number; images?: { mime: string; data: string }[]; timeoutMs?: number } = {}) {
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+type GeminiOpts = { json?: boolean; maxTokens?: number; images?: { mime: string; data: string }[]; timeoutMs?: number };
+
+/**
+ * `images` are base64 (no data: prefix) with their MIME type, e.g. a chart screenshot.
+ * If GEMINI_MODEL names a model Google has retired or does not know, the call is repeated
+ * once with DEFAULT_GEMINI_MODEL, so an old setting in Vercel cannot break the AI tools.
+ */
+export async function gemini(system: string, user: string, opts: GeminiOpts = {}) {
+  const configured = (process.env.GEMINI_MODEL || '').trim() || DEFAULT_GEMINI_MODEL;
+  const started = Date.now();
+  try {
+    return await callGemini(configured, system, user, opts);
+  } catch (e) {
+    const msg = (e as Error).message || '';
+    const retired = /error (400|404|410)\b/.test(msg) && /not found|no longer|retired|deprecated|not supported|unknown model|is not available/i.test(msg);
+    if (configured === DEFAULT_GEMINI_MODEL || !retired) throw e;
+    console.warn(`GEMINI_MODEL "${configured}" is not available; using ${DEFAULT_GEMINI_MODEL}. Update or remove GEMINI_MODEL in Vercel.`);
+    const left = (opts.timeoutMs || 30000) - (Date.now() - started);
+    return callGemini(DEFAULT_GEMINI_MODEL, system, user, { ...opts, timeoutMs: Math.max(15000, left) });
+  }
+}
+
+async function callGemini(model: string, system: string, user: string, opts: GeminiOpts) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY is not set');
-  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },

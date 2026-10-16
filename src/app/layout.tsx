@@ -65,7 +65,18 @@ const jsonLd = {
       founder: { '@id': `${SITE.url}/#founder` },
       knowsAbout: ['Forex trading education', 'Fundamental analysis', 'Technical analysis', 'Trading bots', 'MetaTrader 5', 'TradingView Pine Script', 'Gold trading', 'Prop firm challenges'],
       sameAs: [SITE.instagram, SITE.x, SITE.facebook, SITE.telegram, COMPANY.linkedinPage, COMPANY.googleBusinessProfile].filter(Boolean),
-      subjectOf: { '@type': 'WebPage', url: `${SITE.url}/company` },
+      subjectOf: [
+        { '@type': 'WebPage', url: `${SITE.url}/company` },
+        ...COMPANY.press.map((p) => ({
+          '@type': 'NewsArticle',
+          headline: p.title,
+          url: p.url,
+          datePublished: p.date,
+          ...(p.author ? { author: { '@type': 'Person', name: p.author } } : {}),
+          publisher: { '@type': 'Organization', name: p.publisher || p.outlet },
+          about: { '@id': `${SITE.url}/#org` },
+        })),
+      ],
     },
     {
       '@type': 'Person',
