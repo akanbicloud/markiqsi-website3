@@ -316,4 +316,50 @@ const SCHEMA = [
     summary TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  // ---- Academy: discount and referral codes, lesson progress, attendance, certificates
+  `CREATE TABLE IF NOT EXISTS mq_codes (
+    code TEXT PRIMARY KEY,
+    kind TEXT NOT NULL DEFAULT 'discount',
+    percent INT,
+    amount_ngn INT,
+    amount_usd INT,
+    courses TEXT[],
+    max_uses INT,
+    used INT NOT NULL DEFAULT 0,
+    expires_at TIMESTAMPTZ,
+    owner_user_id BIGINT REFERENCES mq_users(id) ON DELETE CASCADE,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS mq_codes_owner ON mq_codes (owner_user_id) WHERE kind = 'referral'`,
+  `ALTER TABLE mq_enrolments ADD COLUMN IF NOT EXISTS code TEXT`,
+  `ALTER TABLE mq_enrolments ADD COLUMN IF NOT EXISTS list_amount INT`,
+  `ALTER TABLE mq_enrolments ADD COLUMN IF NOT EXISTS referrer_user_id BIGINT`,
+  `ALTER TABLE mq_enrolments ADD COLUMN IF NOT EXISTS code_counted BOOLEAN NOT NULL DEFAULT FALSE`,
+  `CREATE TABLE IF NOT EXISTS mq_progress (
+    user_id BIGINT NOT NULL REFERENCES mq_users(id) ON DELETE CASCADE,
+    course_slug TEXT NOT NULL,
+    lesson TEXT NOT NULL,
+    done_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, course_slug, lesson)
+  )`,
+  `CREATE TABLE IF NOT EXISTS mq_attendance (
+    enrolment_id BIGINT NOT NULL REFERENCES mq_enrolments(id) ON DELETE CASCADE,
+    day DATE NOT NULL,
+    present BOOLEAN NOT NULL DEFAULT TRUE,
+    marked_by TEXT,
+    PRIMARY KEY (enrolment_id, day)
+  )`,
+  `CREATE TABLE IF NOT EXISTS mq_certificates (
+    id TEXT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES mq_users(id) ON DELETE CASCADE,
+    course_slug TEXT NOT NULL,
+    name TEXT NOT NULL,
+    format TEXT,
+    issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    issued_by TEXT,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE (user_id, course_slug)
+  )`,
 ];

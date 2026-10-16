@@ -1,5 +1,6 @@
 import { OLD_SLUGS } from '../content/courses';
 import { db } from '../db';
+import { countCodeUse } from './codes';
 
 export type Enrolment = { id: number; course_slug: string; format: string; currency: string; amount: number; status: string; reference: string | null; created_at: string; paid_at: string | null };
 
@@ -24,5 +25,6 @@ export async function activateByReference(reference: string, paid: { amount: num
   if (e.status === 'active') return e.course_slug;
   if (paid.currency !== e.currency || paid.amount + 0.001 < Number(e.amount)) return null;
   await q`UPDATE mq_enrolments SET status = 'active', paid_at = now() WHERE id = ${e.id}`;
+  await countCodeUse(e.id).catch(() => null);
   return e.course_slug;
 }

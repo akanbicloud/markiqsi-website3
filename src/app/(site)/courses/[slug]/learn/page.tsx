@@ -7,6 +7,8 @@ import { currentUser } from '@/lib/users';
 import { hasAccess } from '@/lib/academy/enrol';
 import { BUNDLES } from '@/lib/academy/view';
 import { isAdminEmail } from '@/lib/academy/admin';
+import { attendanceFor, certificatesFor, progressFor } from '@/lib/academy/progress';
+import { LessonChecklist } from '@/components/academy/LessonChecklist';
 
 export const metadata: Metadata = { title: 'Your course', robots: { index: false } };
 
@@ -17,6 +19,12 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   if (!u) redirect('/login');
   const ok = isAdminEmail(u.email) || (await hasAccess(u.id, c.slug, BUNDLES).catch(() => false));
   if (!ok) redirect(`/courses/${c.slug}`);
+  const [done, certs, attended] = await Promise.all([
+    progressFor(u.id, c.slug).catch(() => []),
+    certificatesFor(u.id).catch(() => []),
+    attendanceFor(u.id).catch(() => ({} as Record<string, number>)),
+  ]);
+  const cert = certs.find((x) => x.course_slug === c.slug);
   return (
     <section className="wrap stack" style={{ maxWidth: 1000, padding: '70px 16px 100px', gap: 28 }}>
       <div className="stack" style={{ gap: 8 }}>
@@ -27,16 +35,13 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
       <div className="note note-info">
         Physical classes: {ACADEMY.addressLine}. Questions: <a href={SITE.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp {SITE.phoneIntl}</a>
       </div>
-      {c.outline.map((w, i) => (
-        <div key={w.week} className="card stack" style={{ gap: 10 }}>
-          <span className="faint" style={{ fontSize: 14 }}>{w.week} · Module {i + 1}</span>
-          <h2 className="h3" style={{ margin: 0 }}>{w.title}</h2>
-          <ol style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 6, lineHeight: 1.5 }}>
-            {w.lessons.map((l) => <li key={l}>{l}</li>)}
-          </ol>
-          {w.practice && <p style={{ margin: 0 }}><strong>Practice task:</strong> {w.practice}</p>}
+      {cert && (
+        <div className="note note-ok">
+          🎓 Your certificate is ready: <Link href={`/certificates/${cert.id}`}>view, print or share it</Link> (ID {cert.id}).
         </div>
-      ))}
+      )}
+      {attended[c.slug] ? <p className="muted" style={{ margin: 0 }}>Physical classes attended: <strong>{attended[c.slug]}</strong></p> : null}
+      <LessonChecklist slug={c.slug} outline={c.outline} initialDone={done} />
       <div className="stack" style={{ gap: 10 }}>
         <h2 className="h3">Your tools</h2>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>

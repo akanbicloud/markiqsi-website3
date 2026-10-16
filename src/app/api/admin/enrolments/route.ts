@@ -2,6 +2,7 @@ import { db, hasDb } from '@/lib/db';
 import { body, fail, json, str } from '@/lib/http';
 import { getSession } from '@/lib/session';
 import { isAdminEmail } from '@/lib/academy/admin';
+import { countCodeUse } from '@/lib/academy/codes';
 
 /** Lets the owner confirm a payment made by bank transfer or WhatsApp, or cancel a request. */
 export async function POST(req: Request) {
@@ -14,5 +15,6 @@ export async function POST(req: Request) {
   if (!id || !['active', 'cancelled', 'pending'].includes(status)) return fail('Bad request.');
   const q = await db();
   await q`UPDATE mq_enrolments SET status = ${status}, paid_at = CASE WHEN ${status} = 'active' THEN COALESCE(paid_at, now()) ELSE paid_at END WHERE id = ${id}`;
+  if (status === 'active') await countCodeUse(id).catch(() => null);
   return json({ ok: true });
 }
