@@ -5,6 +5,8 @@ import { Footer } from '@/components/Footer';
 import { BackToTop } from '@/components/BackToTop';
 import { currentUser } from '@/lib/users';
 import { COMPANY, SITE } from '@/lib/site';
+import { Analytics } from '@vercel/analytics/next';
+import { RefCatcher } from '@/components/RefCatcher';
 
 const DESCRIPTION = 'MarkIQ SI is a market intelligence platform and trading academy: alerts on big economic news from official data, news explained in plain words, trading courses, and free tools to plan, test and automate your trading, including a no-code bot builder for MT5 and TradingView, a market scanner and prop firm tools. Physical classes in Abeokuta, Nigeria.';
 
@@ -133,6 +135,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main id="main">{children}</main>
         <Footer />
         <BackToTop />
+        <Analytics />
+        <RefCatcher />
       </body>
     </html>
   );

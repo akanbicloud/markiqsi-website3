@@ -10,12 +10,39 @@ export function EnrolBox({ slug, options, address }: { slug: string; options: Op
   const [pick, setPick] = useState(options[0].key);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'bad'; text: string; href?: string } | null>(null);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [applied, setApplied] = useState<{ code: string; label: string; now: string; was: string; key: string } | null>(null);
+  const [codeErr, setCodeErr] = useState('');
 
   useEffect(() => {
     fetch('/api/me').then((r) => r.json()).then((d) => setMe(d.user ? 'in' : 'out')).catch(() => setMe('out'));
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('mq_ref');
+      if (ref) { setCode(ref.toUpperCase()); setCodeOpen(true); }
+    } catch {}
   }, []);
 
   const opt = options.find((o) => o.key === pick) || options[0];
+  const price = applied && applied.key === opt.key ? applied.now : opt.now;
+
+  async function checkCode(c = code, o = opt) {
+    setCodeErr('');
+    if (!c.trim()) { setApplied(null); return; }
+    try {
+      const r = await fetch('/api/courses/code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: c, slug, format: o.format, currency: o.currency }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) { setApplied(null); setCodeErr(d.error || 'That code is not valid.'); return; }
+      setApplied({ code: d.code, label: d.label, now: d.now, was: d.was, key: o.key });
+    } catch {
+      setCodeErr('Could not check the code. Please try again.');
+    }
+  }
+
+  useEffect(() => {
+    if (applied && applied.key !== opt.key) checkCode(applied.code, opt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pick]);
 
   function signIn() {
     try {
@@ -28,7 +55,7 @@ export function EnrolBox({ slug, options, address }: { slug: string; options: Op
     setBusy(true);
     setMsg(null);
     try {
-      const r = await fetch('/api/courses/enrol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, format: opt.format, currency: opt.currency }) });
+      const r = await fetch('/api/courses/enrol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, format: opt.format, currency: opt.currency, code: applied?.code || '' }) });
       const d = await r.json().catch(() => ({}));
       if (r.status === 401) return signIn();
       if (!r.ok || !d.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
@@ -61,6 +88,20 @@ export function EnrolBox({ slug, options, address }: { slug: string; options: Op
         ))}
       </div>
       {opt.format === 'physical' && <p className="muted" style={{ margin: 0 }}>Classes hold at {address}.</p>}
+      {codeOpen ? (
+        <div className="stack" style={{ gap: 8 }}>
+          <label className="field" style={{ margin: 0 }}>Discount or referral code
+            <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+              <input className="input" value={code} maxLength={24} onChange={(e) => { setCode(e.target.value.toUpperCase()); setApplied(null); }} placeholder="e.g. LAUNCH10" style={{ flex: 1, minWidth: 0 }} />
+              <button type="button" className="btn btn-outline" onClick={() => checkCode()}>Apply</button>
+            </div>
+          </label>
+          {applied && applied.key === opt.key && <span className="note note-ok" style={{ margin: 0 }}>Code {applied.code}: {applied.label}. You pay {applied.now} instead of {applied.was}.</span>}
+          {codeErr && <span className="note note-bad" style={{ margin: 0 }}>{codeErr}</span>}
+        </div>
+      ) : (
+        <button type="button" className="linkbtn" style={{ alignSelf: 'flex-start' }} onClick={() => setCodeOpen(true)}>Have a discount or referral code?</button>
+      )}
       {me === 'out' ? (
         <>
           <button type="button" className="btn btn-lg" onClick={signIn}>Sign in to enrol <span className="arr" aria-hidden="true">»</span></button>
@@ -68,7 +109,7 @@ export function EnrolBox({ slug, options, address }: { slug: string; options: Op
         </>
       ) : (
         <button type="button" className="btn btn-lg" onClick={enrol} disabled={busy || me === 'loading'}>
-          {busy ? <span className="spinner" aria-label="Please wait" /> : <>Enrol for {opt.now}</>} <span className="arr" aria-hidden="true">»</span>
+          {busy ? <span className="spinner" aria-label="Please wait" /> : <>Enrol for {price}</>} <span className="arr" aria-hidden="true">»</span>
         </button>
       )}
       {msg && (
