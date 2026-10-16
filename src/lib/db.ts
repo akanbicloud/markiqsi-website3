@@ -303,6 +303,11 @@ const SCHEMA = [
     move_1d TEXT,
     note TEXT
   )`,
+  `ALTER TABLE mi_reactions ADD COLUMN IF NOT EXISTS move_15m TEXT`,
+  `ALTER TABLE mi_reactions ADD COLUMN IF NOT EXISTS actual TEXT`,
+  `ALTER TABLE mi_reactions ADD COLUMN IF NOT EXISTS forecast TEXT`,
+  `ALTER TABLE mi_reactions ADD COLUMN IF NOT EXISTS previous TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS mi_reactions_uniq ON mi_reactions (event_name, released_at, asset)`,
   `CREATE TABLE IF NOT EXISTS mi_live (
     id INT PRIMARY KEY DEFAULT 1,
     is_live BOOLEAN NOT NULL DEFAULT FALSE,

@@ -64,6 +64,27 @@ export async function saveMarketData(q: Sql, b: Obj): Promise<{ saved: Record<st
     saved.results++;
   }
 
+  // ---- past market reactions measured by the bot from real prices (history for Ask MarkIQ)
+  const reRows = new Map<string, Obj>();
+  const pct = (v: unknown) => (v == null || v === '' ? null : /^[+-]?\d+(\.\d+)?%( \([^)]{1,40}\))?$/.test(s(v, 60)) ? s(v, 60) : undefined);
+  for (const r of list('reactions')) {
+    const name = s(r.event_name, 160), asset = s(r.asset, 20), at = isoTime(r.released_at);
+    const m15 = pct(r.move_15m), m1h = pct(r.move_1h), m1d = pct(r.move_1d);
+    if (!name || !asset || !at || m15 === undefined || m1h === undefined || m1d === undefined || !(m15 || m1h || m1d)) { skip('reactions'); continue; }
+    reRows.set(`${name}|${at}|${asset}`, { event_name: name, country: opt(r.country, 20), released_at: at, surprise: opt(r.surprise, 60), asset,
+      move_15m: m15, move_1h: m1h, move_1d: m1d, actual: opt(r.actual, 40), forecast: opt(r.forecast, 40), previous: opt(r.previous, 40), note: opt(r.note, 200) });
+  }
+  saved.reactions = reRows.size;
+  if (reRows.size) {
+    await q`INSERT INTO mi_reactions (event_name, country, released_at, surprise, asset, move_15m, move_1h, move_1d, actual, forecast, previous, note)
+      SELECT * FROM jsonb_to_recordset(${JSON.stringify([...reRows.values()])}::jsonb) AS x(event_name text, country text, released_at timestamptz,
+        surprise text, asset text, move_15m text, move_1h text, move_1d text, actual text, forecast text, previous text, note text)
+      ON CONFLICT (event_name, released_at, asset) DO UPDATE SET country = EXCLUDED.country, surprise = EXCLUDED.surprise,
+        move_15m = COALESCE(EXCLUDED.move_15m, mi_reactions.move_15m), move_1h = COALESCE(EXCLUDED.move_1h, mi_reactions.move_1h),
+        move_1d = COALESCE(EXCLUDED.move_1d, mi_reactions.move_1d), actual = EXCLUDED.actual, forecast = EXCLUDED.forecast,
+        previous = EXCLUDED.previous, note = EXCLUDED.note`;
+  }
+
   // ---- news (keep 30 days): ONE database call
   const newsRows = new Map<string, Obj>();
   for (const n of list('news')) {

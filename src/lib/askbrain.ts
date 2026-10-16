@@ -101,7 +101,7 @@ export async function gatherData(question: string, assets: Asset[]) {
     q`SELECT bank, currency, rate, last_change, to_char(last_change_date, 'YYYY-MM-DD') AS last_change_date, to_char(next_meeting, 'YYYY-MM-DD') AS next_meeting FROM mi_rates ORDER BY bank`,
     q`SELECT category, tag, title, left(body, 280) AS body, reaction, source, published_at FROM mi_news WHERE published_at > now() - interval '3 days' ORDER BY published_at DESC LIMIT 12`,
     scoped
-      ? q`SELECT event_name, released_at, surprise, asset, move_1h, move_1d, note FROM mi_reactions WHERE asset ILIKE ANY(${assets.flatMap((a) => [`%${a.key}%`, `%${a.key.replace('/', '')}%`])}) ORDER BY released_at DESC LIMIT 12`
+      ? q`SELECT event_name, released_at, actual, forecast, previous, surprise, asset, move_15m, move_1h, move_1d FROM mi_reactions WHERE asset ILIKE ANY(${assets.flatMap((a) => [`%${a.key}%`, `%${a.key.replace('/', '')}%`, ...(a.key === 'Gold' ? ['%XAU%'] : [])])}) ORDER BY released_at DESC LIMIT 40`
       : Promise.resolve([]),
     Promise.all(assets.map((a) => priceSnapshot(q, a).catch(() => null))),
   ]);
@@ -124,6 +124,7 @@ You answer like a senior trader and teacher: direct, accurate, practical, and ki
 How to answer:
 - Answer the exact question in the FIRST sentence. Then explain why, with the most useful detail. Use short paragraphs; use "- " bullets for lists or steps.
 - Concepts, definitions, strategies, history, how markets and economic data work, risk management, psychology, platforms: answer fully from your own trading knowledge (pips, lots, leverage, ICT/SMC, supply and demand, indicators, sessions, central banks, prop firms, MT5, TradingView...).
+- Past reactions ("what happened to gold when CPI was higher than expected?"): use DATA.past_reactions, which are real measured moves. Count the cases, say how many went up vs down and the typical size, name the most recent one with its date, and say that past reactions do not guarantee the next one. If there are fewer than 3 matching cases, say the sample is small.
 - Anything CURRENT (today's prices, current interest rates, latest results, upcoming events, recent news, dates and times): use ONLY DATA. Give the date/time and source. If DATA does not have it, say plainly that you do not have it in our live data yet, then still explain what generally matters and point to ${SITE.url}/markets.
 - Never invent a current price, rate, result, forecast or date. Never quote a price level that is not in DATA.
 - Questions about MarkIQ SI (courses, prices, classes, address, contact, tools, policies): use DATA.markiq_si exactly.
