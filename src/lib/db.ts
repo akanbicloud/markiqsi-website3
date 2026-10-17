@@ -362,4 +362,27 @@ const SCHEMA = [
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE (user_id, course_slug)
   )`,
+  // ---- Markets terminal: AI tags for news (stories, tone, markets) and the weekly COT report
+  `CREATE TABLE IF NOT EXISTS mi_news_tags (
+    news_id TEXT PRIMARY KEY,
+    story TEXT,
+    theme TEXT,
+    tone INT,
+    speaker TEXT,
+    trump BOOLEAN NOT NULL DEFAULT FALSE,
+    impact INT,
+    markets JSONB NOT NULL DEFAULT '[]'::jsonb,
+    chain TEXT,
+    short TEXT,
+    tagged_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS mi_cot (
+    code TEXT NOT NULL,
+    market TEXT NOT NULL,
+    report_date DATE NOT NULL,
+    long BIGINT NOT NULL,
+    short BIGINT NOT NULL,
+    open_interest BIGINT,
+    PRIMARY KEY (code, report_date)
+  )`,
 ];

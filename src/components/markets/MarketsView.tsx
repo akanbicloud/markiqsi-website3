@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { MarketData } from '@/lib/markets';
 import { AskMarkIQ } from './AskMarkIQ';
+import { TerminalHero } from '../terminal/TerminalHero';
+import { MarketsNav } from '../terminal/MarketsNav';
 import { ZONES, countdown, dayKey, dayLabel, fmtDate, fmtDay, fmtTime, openSessions } from './time';
 
 const MARKETS = ['All', 'Forex', 'Crypto', 'Stocks', 'Commodities'];
@@ -59,9 +61,11 @@ export function MarketsView({ data, signedIn, telegramUrl }: { data: MarketData;
 
   return (
     <>
-      <section className="hero-band stack center" style={{ padding: '90px 16px 30px', textAlign: 'center' }}>
+      <TerminalHero />
+      <MarketsNav active="/markets" />
+      <section className="hero-band stack center" style={{ padding: '60px 16px 30px', textAlign: 'center' }}>
         <div className="stack center" style={{ maxWidth: 1100, gap: 22 }}>
-          <h1 className="h1 rise">What&apos;s Moving the Market This Week</h1>
+          <h2 className="h1 rise">What&apos;s Moving the Market This Week</h2>
           <p className="lead rise d1" style={{ maxWidth: 820 }}>
             The big events and news from the US, UK, Europe, Japan, China, Canada and Australia, from economic data to wars, elections and trade, explained in plain words before and after they happen.
           </p>
