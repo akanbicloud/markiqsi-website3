@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { after } from 'next/server';
 import { hasDb } from '@/lib/db';
-import { newsFlow, toneStrip, type FlowItem } from '@/lib/terminal/newsflow';
+import { newsFlow, tagNewsIfDue, toneStrip, type FlowItem } from '@/lib/terminal/newsflow';
 import { MarketsNav } from '@/components/terminal/MarketsNav';
 import { NewsFlowView } from '@/components/terminal/NewsFlowView';
 
@@ -10,9 +11,12 @@ export const metadata: Metadata = {
   alternates: { canonical: '/markets/news-flow' },
 };
 
+export const maxDuration = 60;
+
 export default async function NewsFlowPage() {
   let items: FlowItem[] = [];
   let error = '';
+  if (hasDb()) after(() => tagNewsIfDue().catch(() => null));
   if (hasDb()) items = await newsFlow().then((d) => d.items).catch(() => { error = 'News Flow is temporarily unavailable.'; return []; });
   else error = 'News Flow is not connected yet.';
   return (

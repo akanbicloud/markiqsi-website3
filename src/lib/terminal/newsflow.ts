@@ -1,5 +1,6 @@
 import { db } from '../db';
 import { gemini, parseJson } from '../gemini';
+import { claim, note } from '../marketfeed';
 
 /**
  * News Flow: each headline is tagged once by AI (theme, tone, who said it, which markets it touches
@@ -93,4 +94,17 @@ export async function newsFlow(): Promise<{ items: FlowItem[]; tone: ToneDay[]; 
     ORDER BY n.published_at DESC LIMIT 400`) as Record<string, unknown>[];
   const items = rows.map((r) => ({ ...(r as unknown as FlowItem), published_at: r.published_at instanceof Date ? r.published_at.toISOString() : String(r.published_at), markets: (r.markets as FlowItem['markets']) || [] }));
   return { items, tone: toneStrip(items), tagged: items.length };
+}
+
+/** Same as tagNews, at most once every 2 minutes (safe to call on every page view). */
+export async function tagNewsIfDue(): Promise<void> {
+  if (!process.env.GEMINI_API_KEY) return;
+  const q = await db();
+  if (!(await claim(q, 'newstag', 2))) return;
+  try {
+    const n = await tagNews();
+    await note(q, 'newstag', true, `tagged ${n}`);
+  } catch (e) {
+    await note(q, 'newstag', false, (e as Error).message.slice(0, 200), 5);
+  }
 }
