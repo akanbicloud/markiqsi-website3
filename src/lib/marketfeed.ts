@@ -215,7 +215,7 @@ async function seedRates(q: Sql) {
  * A refresh is due when the last SUCCESS is older than `everyMinutes`. A claim holds a short lock
  * (2 minutes): if that run is cut off, the lock simply expires and the next visitor retries.
  */
-async function claim(q: Sql, key: string, everyMinutes: number) {
+export async function claim(q: Sql, key: string, everyMinutes: number) {
   const rows = (await q`
     INSERT INTO mq_feed_state (key, fetched_at, locked_until) VALUES (${key}, now(), now() + interval '2 minutes')
     ON CONFLICT (key) DO UPDATE SET fetched_at = now(), locked_until = now() + interval '2 minutes'
@@ -225,7 +225,7 @@ async function claim(q: Sql, key: string, everyMinutes: number) {
   return rows.length > 0;
 }
 
-async function note(q: Sql, key: string, ok: boolean, msg: string, retryMinutes?: number) {
+export async function note(q: Sql, key: string, ok: boolean, msg: string, retryMinutes?: number) {
   if (ok) await q`UPDATE mq_feed_state SET ok = true, note = ${msg}, last_success = now(), locked_until = NULL WHERE key = ${key}`;
   // On failure, keep it stale and lock it for a few minutes, then the next visitor retries.
   else await q`UPDATE mq_feed_state SET ok = false, note = ${msg}, locked_until = now() + make_interval(mins => ${retryMinutes ?? 5}::int) WHERE key = ${key}`;

@@ -6,6 +6,7 @@ import { fail, json } from '@/lib/http';
 import { refreshPrices } from '@/lib/trading/prices';
 import { refreshMarketFeeds } from '@/lib/marketfeed';
 import { tagNews } from '@/lib/terminal/newsflow';
+import { refreshCot } from '@/lib/terminal/cot';
 import { scanAll, sendEventReminders, sendScanAlerts } from '@/lib/trading/scanner';
 
 export const maxDuration = 60;
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
   const out: Record<string, unknown> = {};
   try {
     await refreshMarketFeeds(await db()).catch(() => null);
+    out.cot = await refreshCot().catch((e) => `failed: ${safeError(e).slice(0, 120)}`);
     out.newsTagged = await tagNews().catch((e) => `failed: ${safeError(e).slice(0, 120)}`);
     if (process.env.TWELVE_DATA_API_KEY) {
       out.prices = await refreshPrices(4);
