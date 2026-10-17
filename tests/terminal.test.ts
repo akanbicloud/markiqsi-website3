@@ -75,3 +75,61 @@ test('candle facts are built only from the data given', () => {
   const quiet = candleFacts({ ...d, events: [] }, 60);
   assert.ok(quiet.facts.some((x) => /No big economic release/.test(x)));
 });
+
+import { BUCKETS, bucketOf, buildPlaybook, historyLabel, ranges, typicalStep } from '../src/lib/terminal/playbook';
+
+test('playbook ranges follow the published precision', () => {
+  const r = ranges(0.3, 0.1, 1, '%');
+  assert.equal(r.inline, '0.3%');
+  assert.equal(r.higher, '0.4%');
+  assert.equal(r.much_higher, '0.5% or more');
+  assert.equal(r.lower, '0.2%');
+  assert.equal(r.much_lower, '0.1% or less');
+  const k = ranges(220, 30, 0, 'K');
+  assert.equal(k.inline, '206K to 234K');
+  assert.equal(k.higher, '235K to 264K');
+  assert.equal(k.much_higher, '265K or more');
+  assert.equal(k.much_lower, '175K or less');
+  // every number between much lower and much higher lands in the bucket its range says
+  for (let a = 170; a <= 270; a++) {
+    const b = bucketOf(a, 220, 30);
+    const want = a >= 265 ? 'much_higher' : a >= 235 ? 'higher' : a > 205 ? 'inline' : a > 175 ? 'lower' : 'much_lower';
+    assert.equal(b, want, `actual ${a}`);
+  }
+});
+
+test('typical step is the median surprise, rounded to the published precision', () => {
+  assert.equal(typicalStep([0.1, -0.2, 0.1, 0.2, 0, 0.3], '0.3%'), 0.2);
+  assert.equal(typicalStep([0.1], '0.3%'), 0.1, 'too little history: one unit');
+  assert.equal(typicalStep([], '225K'), 11);
+});
+
+test('playbook groups past releases and lights the bucket of the actual', () => {
+  const row = (d: string, actual: string, forecast: string, asset: string, m: string) => ({ asset, released_at: d, actual, forecast, move_15m: m, move_1h: null });
+  const rows = [
+    row('2024-01-11', '0.4%', '0.2%', 'EURUSD', '-0.30% (-33 pips)'), row('2024-01-11', '0.4%', '0.2%', 'XAUUSD', '-0.50%'),
+    row('2024-02-13', '0.4%', '0.3%', 'EURUSD', '-0.20% (-22 pips)'), row('2024-02-13', '0.4%', '0.3%', 'XAUUSD', '-0.40%'),
+    row('2024-03-12', '0.4%', '0.3%', 'EURUSD', '-0.10% (-11 pips)'), row('2024-03-12', '0.4%', '0.3%', 'XAUUSD', '+0.10%'),
+    row('2024-04-10', '0.2%', '0.3%', 'EURUSD', '+0.25% (+27 pips)'), row('2024-04-10', '0.2%', '0.3%', 'XAUUSD', '+0.60%'),
+    row('2024-05-15', '0.2%', '0.3%', 'EURUSD', '+0.15%'),
+    row('2024-06-12', '0.3%', '0.3%', 'EURUSD', '+0.01%'),
+  ];
+  const p = buildPlaybook('US CPI m/m', '0.3%', rows, '0.4%');
+  assert.equal(p.cases, 6);
+  assert.equal(p.step, 0.1);
+  assert.equal(p.lit, 'higher');
+  const higher = p.steps.find((s) => s.key === 'higher')!;
+  const eur = higher.markets.find((m) => m.asset === 'EURUSD')!;
+  assert.deepEqual([eur.cases, eur.up, eur.down], [2, 0, 2]);
+  assert.equal(eur.horizon, '15 min');
+  assert.equal(p.steps.map((s) => s.key).join(), BUCKETS.map((b) => b.key).join());
+  assert.equal(buildPlaybook('X', null, rows).steps.length, 0, 'no forecast, no ladder');
+});
+
+test('calendar names map to the bot history labels', () => {
+  assert.equal(historyLabel('US', 'Core CPI m/m'), 'US Core CPI m/m');
+  assert.equal(historyLabel('US', 'CPI m/m'), 'US CPI m/m');
+  assert.equal(historyLabel('US', 'Non-Farm Employment Change'), 'US Non-Farm Payrolls');
+  assert.equal(historyLabel('US', 'Advance GDP q/q'), 'US GDP q/q');
+  assert.equal(historyLabel('UK', 'CPI y/y'), null);
+});
