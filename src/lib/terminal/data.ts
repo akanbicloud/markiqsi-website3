@@ -1,7 +1,7 @@
 import { db } from '../db';
 import type { Candle } from '../trading/indicators';
 import { SYMBOLS, type TF } from '../trading/symbols';
-import { closedOnly } from '../trading/prices';
+import { closedOnly, fetchTwelve } from '../trading/prices';
 import { MARKETS, NEEDED, pressure } from './pressure';
 
 export type ChartEvent = {
@@ -109,11 +109,28 @@ export async function chartData(marketKey: string, tf: TF = '1h', bars = 240): P
   const sym = SYMBOLS.find((s) => s.key === marketKey);
   if (!m || !sym) return null;
   const all = await cachedCandles(Array.from(new Set([...NEEDED, marketKey])), tf);
-  const target = all[marketKey] || [];
+  let target = all[marketKey] || [];
+  if (target.length < 30) {
+    // the background refresh has not stored this market yet: fetch it once now (1 price-data credit)
+    target = await fetchAndStore(marketKey, tf).catch((e) => { console.warn('terminal fetch', marketKey, (e as Error).message); return []; });
+    all[marketKey] = target;
+  }
   if (target.length < 30) return null;
   const pts = pressure(marketKey, target, all);
   const start = Math.max(0, target.length - bars);
   const candles = target.slice(start).map((c, i) => ({ ...c, score: pts[start + i].score, parts: pts[start + i].parts }));
   const events = await chartEvents(marketKey, candles, tf).catch(() => []);
   return { market: marketKey, label: m.label, tf, digits: DIGITS[marketKey] ?? 4, candles, events, pricingIn: pricingIn(events, candles[candles.length - 1].t), updated: new Date().toISOString() };
+}
+
+async function fetchAndStore(key: string, tf: TF): Promise<Candle[]> {
+  const sym = SYMBOLS.find((s) => s.key === key);
+  if (!sym || !process.env.TWELVE_DATA_API_KEY) return [];
+  const candles = await fetchTwelve(sym, tf, 320);
+  if (candles.length) {
+    const q = await db();
+    await q`INSERT INTO mq_price_cache (symbol, timeframe, candles, fetched_at, error) VALUES (${key}, ${tf}, ${JSON.stringify(candles)}, now(), NULL)
+      ON CONFLICT (symbol, timeframe) DO UPDATE SET candles = EXCLUDED.candles, fetched_at = now(), error = NULL`;
+  }
+  return closedOnly(candles, tf);
 }
