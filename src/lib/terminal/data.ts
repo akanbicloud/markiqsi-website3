@@ -14,7 +14,8 @@ export type ChartData = {
   events: ChartEvent[]; pricingIn: string[]; updated: string;
 };
 
-export const THEME_ICON: Record<string, string> = { data: '📊', fed: '🏦', war: '⚔️', trade: '🚢', election: '🗳️', trump: '🇺🇸', energy: '🛢️', other: '📰' };
+import { THEME_ICON } from './themes';
+export { THEME_ICON };
 
 const DIGITS: Record<string, number> = { XAUUSD: 2, EURUSD: 5, GBPUSD: 5, USDJPY: 3, SPY: 2, BTCUSD: 0 };
 

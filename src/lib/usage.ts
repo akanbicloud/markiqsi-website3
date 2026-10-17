@@ -11,7 +11,8 @@ import { getSession } from './session';
 const DEFAULTS: Record<string, { anon: number; user: number }> = {
   ai_build: { anon: 10, user: 40 }, // AI help understanding a bot or indicator description
   backtest: { anon: 15, user: 60 },
-  chart: { anon: 2, user: 8 }, // chart screenshot analysis (images cost the most)
+  chart: { anon: 2, user: 8 },
+  replay: { anon: 6, user: 30 }, // a past release not replayed before (uses price data) // chart screenshot analysis (images cost the most)
 };
 
 function limitFor(feature: string, signedIn: boolean) {

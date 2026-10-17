@@ -4,6 +4,8 @@ export const MARKET_PAGES: { href: string; label: string; icon: string; desc: st
   { href: '/markets', label: 'Overview', icon: '🗓️', desc: 'This week’s events, rates, results and news' },
   { href: '/markets/terminal', label: 'Terminal', icon: '📈', desc: 'Every move labelled. Click a candle to see why' },
   { href: '/markets/calendar', label: 'Pro FX Calendar', icon: '⏱️', desc: 'Countdowns, live results and a playbook for every release' },
+  { href: '/markets/replay', label: 'Event Replay', icon: '⏪', desc: 'Watch past releases play out candle by candle' },
+  { href: '/markets/news-flow', label: 'News Flow', icon: '🧭', desc: 'Fed tone, war tone, Trump tracker and story chains' },
 ];
 
 export function MarketsNav({ active }: { active: string }) {

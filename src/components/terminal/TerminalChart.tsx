@@ -39,11 +39,13 @@ type Props = {
   /** 0..1 position of the reveal line; controlled by the Replay page. */
   reveal?: number;
   onReveal?: (r: number) => void;
+  /** false hides the Pressure lines in the hover card (e.g. replays of old releases). */
+  showPressure?: boolean;
 };
 
 const PAD = { l: 8, r: 72, top: 64, strip: 16, axis: 22 };
 
-export function TerminalChart({ data, mode = 'full', height = 460, selected = null, onSelect, reveal: revealProp, onReveal }: Props) {
+export function TerminalChart({ data, mode = 'full', height = 460, selected = null, onSelect, reveal: revealProp, onReveal, showPressure = true }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const base = useRef<HTMLCanvasElement | null>(null);
@@ -288,10 +290,10 @@ export function TerminalChart({ data, mode = 'full', height = 460, selected = nu
           <div className="mono" style={{ fontSize: 15, margin: '2px 0 6px' }}>
             {fmtPrice(h.c, data.digits)} <span style={{ color: h.c >= h.o ? C.mint : C.coral }}>{h.o ? `${h.c >= h.o ? '+' : ''}${(((h.c - h.o) / h.o) * 100).toFixed(2)}%` : ''}</span>
           </div>
-          <div style={{ fontWeight: 700, color: h.score == null ? '#9FB2D6' : h.score >= 0 ? C.mint : C.coral }}>
+          {showPressure && <div style={{ fontWeight: 700, color: h.score == null ? '#9FB2D6' : h.score >= 0 ? C.mint : C.coral }}>
             Pressure {h.score == null ? '·' : `${h.score > 0 ? '+' : ''}${h.score}`} · {pressureWord(h.score)}
-          </div>
-          {h.parts.length > 0 && (
+          </div>}
+          {showPressure && h.parts.length > 0 && (
             <div style={{ display: 'grid', gap: 3, marginTop: 6 }}>
               {h.parts.map((p) => (
                 <div key={p.label} style={{ display: 'grid', gridTemplateColumns: '78px 1fr 34px', alignItems: 'center', gap: 6, fontSize: 12 }}>
