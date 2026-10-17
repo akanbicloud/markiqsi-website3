@@ -133,3 +133,48 @@ test('calendar names map to the bot history labels', () => {
   assert.equal(historyLabel('US', 'Advance GDP q/q'), 'US GDP q/q');
   assert.equal(historyLabel('UK', 'CPI y/y'), null);
 });
+
+import { cleanTags, toneStrip } from '../src/lib/terminal/newsflow';
+import { replayStats } from '../src/lib/terminal/replaystats';
+
+test('AI news tags are checked and cleaned', () => {
+  const tags = cleanTags({ items: [
+    { id: 'a', story: 'US-China tariffs', theme: 'trade', tone: -5, trump: false, impact: 9, markets: [{ market: 'gold', dir: 'up' }, { market: 'NOTHING', dir: 'up' }, { market: 'JPY', dir: 'sideways' }], chain: 'Tariffs → risk-off → gold up', short: 'Tariff threat on China imports and more words' },
+    { id: 'b', theme: 'trump', tone: 1 },
+    { id: 'zzz', theme: 'fed' },
+    { id: 'a', theme: 'fed' },
+    { id: 'c', theme: 'banana', tone: 'x', impact: null },
+  ] }, ['a', 'b', 'c']);
+  assert.equal(tags.length, 3);
+  const a = tags[0];
+  assert.deepEqual([a.tone, a.impact], [-2, 3]);
+  assert.deepEqual(a.markets, [{ market: 'GOLD', dir: 'up' }, { market: 'JPY', dir: 'up' }]);
+  assert.equal(a.short.length, 32);
+  assert.equal(tags[1].trump, true, 'theme trump means Trump');
+  assert.deepEqual([tags[2].theme, tags[2].tone, tags[2].impact, tags[2].story], ['other', 0, 1, 'Other news']);
+  assert.deepEqual(cleanTags('nonsense', ['a']), []);
+});
+
+test('tone strip averages each day', () => {
+  const now = Date.parse('2026-10-17T12:00:00Z');
+  const strip = toneStrip([
+    { theme: 'fed', tone: 2, published_at: '2026-10-17T08:00:00Z' }, { theme: 'fed', tone: -1, published_at: '2026-10-17T09:00:00Z' },
+    { theme: 'war', tone: 2, published_at: '2026-10-16T09:00:00Z' }, { theme: 'trade', tone: -2, published_at: '2026-10-17T09:00:00Z' },
+  ], 3, now);
+  assert.deepEqual(strip.map((d) => d.day), ['2026-10-15', '2026-10-16', '2026-10-17']);
+  assert.deepEqual([strip[2].fed, strip[2].fedN, strip[2].war], [0.5, 2, null]);
+  assert.equal(strip[1].war, 2);
+});
+
+test('replay stats measure from the release candle open', () => {
+  const t0 = Date.parse('2026-10-15T12:30:00Z'), q = 15 * 60000;
+  const c = [100, 100, 101, 99, 102, 103, 104].map((v, i) => ({ t: t0 + (i - 2) * q, o: i === 2 ? 100 : v, h: v + 0.5, l: v - 0.5, c: v }));
+  const s = replayStats(c, t0)!;
+  assert.equal(s.index, 2);
+  assert.equal(s.m15, 1);
+  assert.equal(s.m60, 3, 'close of the fourth 15-minute candle');
+  assert.equal(s.end, 4);
+  assert.equal(s.low, -1.5);
+  assert.equal(s.high, 4.5);
+  assert.equal(replayStats(c, t0 + 99 * q), null);
+});

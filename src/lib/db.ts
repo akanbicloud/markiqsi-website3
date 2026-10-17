@@ -376,6 +376,13 @@ const SCHEMA = [
     short TEXT,
     tagged_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS mi_replay_cache (
+    market TEXT NOT NULL,
+    at TIMESTAMPTZ NOT NULL,
+    candles JSONB NOT NULL,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (market, at)
+  )`,
   `CREATE TABLE IF NOT EXISTS mi_cot (
     code TEXT NOT NULL,
     market TEXT NOT NULL,
