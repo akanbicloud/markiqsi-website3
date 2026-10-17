@@ -3,6 +3,7 @@ import Link from 'next/link';
 export const MARKET_PAGES: { href: string; label: string; icon: string; desc: string }[] = [
   { href: '/markets', label: 'Overview', icon: '🗓️', desc: 'This week’s events, rates, results and news' },
   { href: '/markets/terminal', label: 'Terminal', icon: '📈', desc: 'Every move labelled. Click a candle to see why' },
+  { href: '/markets/calendar', label: 'Pro FX Calendar', icon: '⏱️', desc: 'Countdowns, live results and a playbook for every release' },
 ];
 
 export function MarketsNav({ active }: { active: string }) {
