@@ -6,6 +6,8 @@ export const MARKET_PAGES: { href: string; label: string; icon: string; desc: st
   { href: '/markets/calendar', label: 'Pro FX Calendar', icon: '⏱️', desc: 'Countdowns, live results and a playbook for every release' },
   { href: '/markets/replay', label: 'Event Replay', icon: '⏪', desc: 'Watch past releases play out candle by candle' },
   { href: '/markets/news-flow', label: 'News Flow', icon: '🧭', desc: 'Fed tone, war tone, Trump tracker and story chains' },
+  { href: '/markets/strength', label: 'Currency Strength', icon: '💪', desc: 'Which of the 8 major currencies is strongest right now' },
+  { href: '/markets/cot', label: 'COT Report', icon: '🧾', desc: 'What the big funds hold in futures, every week' },
 ];
 
 export function MarketsNav({ active }: { active: string }) {

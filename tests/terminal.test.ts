@@ -178,3 +178,36 @@ test('replay stats measure from the release candle open', () => {
   assert.equal(s.high, 4.5);
   assert.equal(replayStats(c, t0 + 99 * q), null);
 });
+
+import { strength } from '../src/lib/terminal/strength';
+import { cotSummary, crowd, mainContract } from '../src/lib/terminal/cot';
+
+test('currency strength: EUR up 1% vs USD, JPY down via USDJPY up', () => {
+  const t0 = 1_760_000_000_000;
+  const pair = (a: number, b: number) => [{ t: t0, o: a, h: a, l: a, c: a }, { t: t0 + 3600000, o: b, h: b, l: b, c: b }];
+  const s = strength({ EURUSD: pair(1, 1.01), GBPUSD: pair(1, 1), AUDUSD: pair(1, 1), NZDUSD: pair(1, 1), USDJPY: pair(100, 101), USDCAD: pair(1, 1), USDCHF: pair(1, 1) }, t0)!;
+  const raw = { USD: 0, EUR: 1, JPY: 100 / 1.01 - 100 };
+  const mean = (raw.EUR + raw.JPY) / 8;
+  assert.equal(s.EUR, Math.round((1 - mean) * 100) / 100);
+  assert.ok(s.JPY < 0 && s.EUR > 0);
+  assert.ok(Math.abs(Object.values(s).reduce((a, b) => a + b, 0)) < 0.05, 'sums to about zero');
+  assert.equal(strength({ EURUSD: pair(1, 1.01) }, t0), null, 'too few pairs');
+});
+
+test('COT: the main contract and the crowding reading', () => {
+  assert.equal(mainContract([
+    { cftc_contract_market_code: '099741', report_date_as_yyyy_mm_dd: '2026-10-06T00:00:00.000', open_interest_all: '700000' },
+    { cftc_contract_market_code: '0997X1', report_date_as_yyyy_mm_dd: '2026-10-06T00:00:00.000', open_interest_all: '9000' },
+    { cftc_contract_market_code: 'OLD', report_date_as_yyyy_mm_dd: '2026-09-29T00:00:00.000', open_interest_all: '9999999' },
+  ]), '099741');
+  assert.equal(mainContract([]), null);
+  const hist = Array.from({ length: 40 }, (_, i) => ({ date: `2026-${String(1 + Math.floor(i / 4)).padStart(2, '0')}-${String(1 + (i % 4) * 7).padStart(2, '0')}`, long: 100 + i * 10, short: 200 }));
+  const r = cotSummary('EUR', 'Euro', hist)!;
+  assert.equal(r.net, 100 + 39 * 10 - 200);
+  assert.equal(r.change, 10);
+  assert.equal(r.pctile, 100);
+  assert.equal(crowd(r.pctile), 'Crowded long');
+  assert.equal(crowd(5), 'Crowded short');
+  assert.equal(crowd(50), 'Middle of the range');
+  assert.equal(cotSummary('X', 'X', hist.slice(0, 5))!.pctile, null, 'needs half a year of history');
+});
